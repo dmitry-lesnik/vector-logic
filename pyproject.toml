@@ -1,0 +1,37 @@
+[project]
+name = "rule-engine"
+version = "0.1.0"
+description = "A library for a simple rule engine."
+authors = [
+    { name = "Dmitry Lesnik" }
+]
+readme = "README.md"
+license = "MIT"
+
+# requires-python = ">=3.11"
+# dependencies = [
+# ]
+
+[tool.poetry]
+packages = [{ include = "rule_engine" }]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+pyparsing = "^3.2.5"
+numpy = ">=1.20"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.2"
+black = "^25.9.0"
+yappi = "*"
+matplotlib = "*"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+
+
+
