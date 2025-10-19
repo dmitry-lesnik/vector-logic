@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false # Allows all jobs to run even if one fails
       matrix:
-        python-version: [ "3.9", "3.11" ]
+        python-version: [ "3.9", "3.12" ]
         # Test against a specific version from the 1.2x series and the latest version.
         # Using 1.26.4 as it's the final release of the 1.26 series.
         numpy-version: [ "1.26.4", "latest" ]
