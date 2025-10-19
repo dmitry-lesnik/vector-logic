@@ -4,7 +4,7 @@ Tests for the TObject class.
 
 import pytest
 
-from rule_engine.t_object import TObject
+from vectorlogic.t_object import TObject
 
 
 def test_t_object_default_initialization():

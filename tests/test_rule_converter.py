@@ -4,9 +4,9 @@ End-to-end tests for the RuleConverter class, combining all relevant test cases.
 
 import pytest
 
-from rule_engine.rule_converter import RuleConverter
-from rule_engine.state_vector import StateVector
-from rule_engine.t_object import TObject
+from vectorlogic.rule_converter import RuleConverter
+from vectorlogic.state_vector import StateVector
+from vectorlogic.t_object import TObject
 
 
 @pytest.fixture

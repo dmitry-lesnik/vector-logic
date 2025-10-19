@@ -2,7 +2,7 @@ import time
 
 import numpy as np
 
-from rule_engine.engine import Engine
+from vectorlogic.engine import Engine
 
 
 def generate_random_rule(variables_: list[str], num_vars: int, operators_: list[str], random_state) -> str:

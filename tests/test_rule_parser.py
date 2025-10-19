@@ -4,7 +4,7 @@ Tests for the RuleParser class.
 
 import pytest
 
-from rule_engine.rule_parser import RuleParser
+from vectorlogic.rule_parser import RuleParser
 
 
 @pytest.fixture

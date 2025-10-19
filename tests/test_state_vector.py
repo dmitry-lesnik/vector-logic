@@ -4,8 +4,8 @@ Tests for the StateVector class.
 
 import pytest
 
-from rule_engine.state_vector import StateVector
-from rule_engine.t_object import TObject
+from vectorlogic.state_vector import StateVector
+from vectorlogic.t_object import TObject
 
 
 def test_state_vector_default_initialization():

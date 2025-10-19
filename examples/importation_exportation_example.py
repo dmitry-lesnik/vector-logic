@@ -8,7 +8,7 @@ proof from Appendix A of the State Algebra paper.
 # export PYTHONPATH=$(pwd)
 # python examples/importation_exportation_example.py
 
-from rule_engine import Engine
+from vectorlogic import Engine
 
 
 def importation_exportation_proof():
