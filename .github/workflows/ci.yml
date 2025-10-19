@@ -1,6 +1,7 @@
 # This workflow will install Python dependencies and run tests for every push and pull request.
+# It tests against a matrix of Python and NumPy versions.
 
-name: Python package
+name: Python package CI
 
 on:
   push:
@@ -12,11 +13,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false # Allows all jobs to run even if one fails
       matrix:
-        python-version: [ "3.9", "3.10", "3.11" ]
+        python-version: [ "3.9", "3.11" ]
+        # Test against a specific version from the 1.2x series and the latest version.
+        # Using 1.26.4 as it's the final release of the 1.26 series.
+        numpy-version: [ "1.26.4", "2.3.4" ]
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Check out repository
+        uses: actions/checkout@v3
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -26,8 +32,19 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
 
-      - name: Install dependencies
+      - name: Install base dependencies
         run: poetry install
+
+      - name: Install specific NumPy version
+        run: |
+          if [ "${{ matrix.numpy-version }}" = "latest" ]; then
+            echo "Installing the latest version of NumPy..."
+            poetry run pip install --upgrade numpy
+          else
+            echo "Installing NumPy version ${{ matrix.numpy-version }}..."
+            poetry run pip install --upgrade "numpy==${{ matrix.numpy-version }}"
+          fi
 
       - name: Run tests
         run: poetry run pytest
+
