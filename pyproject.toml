@@ -8,9 +8,11 @@ authors = [
 readme = "README.md"
 license = "MIT"
 keywords = ["rule-engine", "rules", "business-rules", "logic", "state-vector", "state-algebra"]
-homepage = "https://github.com/dmitry-lesnik/vector-logic"
-repository = "https://github.com/dmitry-lesnik/vector-logic"
 
+[project.urls]
+Homepage = "https://github.com/dmitry-lesnik/vector-logic"
+Repository = "https://github.com/dmitry-lesnik/vector-logic"
+"Bug Tracker" = "https://github.com/dmitry-lesnik/vector-logic/issues"
 
 [tool.poetry]
 packages = [{ include = "vectorlogic" }]

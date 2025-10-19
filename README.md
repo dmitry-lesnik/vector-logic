@@ -1,4 +1,8 @@
 # vector-logic: A Lightweight Python Rules Engine
+[![PyPI version](https://badge.fury.io/py/vector-logic.svg)](https://badge.fury.io/py/vector-logic)
+[![Downloads](https://pepy.tech/badge/vector-logic)](https://pepy.tech/project/vector-logic)
+[![CI](https://github.com/dmitry-lesnik/vector-logic/actions/workflows/ci.yml/badge.svg)](https://github.com/dmitry-lesnik/vector-logic/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A fast, transparent, and extensible Python library for running inference on a generic system of logical rules.
 
