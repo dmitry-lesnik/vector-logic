@@ -4,9 +4,9 @@ Tests for the Engine class.
 
 import pytest
 
-from rule_engine.engine import Engine
-from rule_engine.state_vector import StateVector
-from rule_engine.t_object import TObject
+from vectorlogic.engine import Engine
+from vectorlogic.state_vector import StateVector
+from vectorlogic.t_object import TObject
 
 
 @pytest.fixture

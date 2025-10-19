@@ -1,5 +1,5 @@
 """
-Rule Engine Package.
+Vector Logic Package.
 
 This package provides a simple rule engine based on state vector representation.
 It allows for defining logical rules and performing logical inference.

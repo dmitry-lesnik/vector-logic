@@ -1,5 +1,5 @@
 """
-A complete example of using the rule_engine library to perform logical inference.
+A complete example of using the vector-logic library to perform logical inference.
 """
 
 # To run this example from the root of the project, you might need to
@@ -7,7 +7,7 @@ A complete example of using the rule_engine library to perform logical inference
 # export PYTHONPATH=$(pwd)
 # python examples/inference_example.py
 
-from rule_engine import Engine
+from vectorlogic import Engine
 
 
 def rainy_day_scenario():

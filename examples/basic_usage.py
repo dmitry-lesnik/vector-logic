@@ -1,13 +1,13 @@
 """
-This example demonstrates the basic usage of the rule-engine library and
+This example demonstrates the basic usage of the vector-logic library and
 explains the performance trade-offs of compiling the engine.
 """
 
-from rule_engine import Engine
+from vectorlogic import Engine
 
 # --- Understanding Compilation ---
 #
-# The rule-engine offers two main approaches for inference, and choosing
+# The vector-logic offers two main approaches for inference, and choosing
 # the right one depends on your use case.
 #
 # 1. Pre-compiling the Knowledge Base (`engine.compile()`):
