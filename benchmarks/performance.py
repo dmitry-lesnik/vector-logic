@@ -1,6 +1,5 @@
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from rule_engine.engine import Engine
@@ -149,16 +148,6 @@ def run__compile_stats():
     # print(f"time_std = {np.round(time_std, 3)}")
     print(f"time_max = {np.round(time_max, 3)}")
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(M_range, time_mean, marker="o", linestyle="-", color="blue", label="Mean Compilation Time")
-    plt.fill_between(M_range, time_min, time_max, color="blue", alpha=0.2, label="Min-Max Range")
-    plt.xlabel("Number of Rules (M)")
-    plt.ylabel("Compilation Time (seconds)")
-    plt.title("Engine Compilation Performance vs. Number of Rules")
-    plt.grid(True, linestyle="--", alpha=0.7)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
     previous_result = """
     [Intel_i7-12700H_31GB_Kubuntu_24.04.3_6.8.0-85-generic]
     ---------------------

@@ -319,13 +319,13 @@ class StateVector:
 
         return current_sv
 
-    def negate_variables(self, variable_indices: List[int] | int) -> "StateVector":
+    def negate_variables(self, variable_indices: Tuple[List[int], int]) -> "StateVector":
         """
         Return a new StateVector with specified variables negated.
 
         Parameters
         ----------
-        variable_indices : List[int] | int
+        variable_indices : Tuple[List[int], int]
             A single index or a list of indices to negate.
 
         Returns
@@ -336,7 +336,7 @@ class StateVector:
         new_t_objects = [t.negate_variables(variable_indices) for t in self._t_objects]
         return StateVector(new_t_objects)
 
-    def remove_variables(self, variable_indices: List[int] | int) -> "StateVector":
+    def remove_variables(self, variable_indices: Tuple[List[int], int]) -> "StateVector":
         """
         Return a new StateVector with specified variables removed.
 
@@ -345,7 +345,7 @@ class StateVector:
 
         Parameters
         ----------
-        variable_indices : List[int] | int
+        variable_indices : Tuple[List[int], int]
             A single index or a list of indices to remove.
 
         Returns

@@ -6,7 +6,7 @@ in the rule engine. It represents an immutable ternary object, where each
 variable can be in one of three states: True (1), False (0), or Schrödinger's cat (-).
 """
 
-from typing import Iterable, Optional, List
+from typing import Iterable, Optional, List, Tuple
 
 
 class TObject:
@@ -210,7 +210,7 @@ class TObject:
         # The constructor handles the check for contradictions (ones/zeros overlap)
         return TObject(ones=new_ones, zeros=new_zeros)
 
-    def negate_variables(self, variable_indices: List[int] | int) -> "TObject":
+    def negate_variables(self, variable_indices: Tuple[List[int], int]) -> "TObject":
         """
         Return a new TObject with specified variables negated.
 
@@ -219,7 +219,7 @@ class TObject:
 
         Parameters
         ----------
-        variable_indices : List[int] | int
+        variable_indices : Tuple[List[int], int]
             A single index or a list of indices to negate.
 
         Returns
@@ -237,7 +237,7 @@ class TObject:
 
         return TObject(ones=new_ones, zeros=new_zeros)
 
-    def remove_variables(self, variable_indices: List[int] | int) -> "TObject":
+    def remove_variables(self, variable_indices: Tuple[List[int], int]) -> "TObject":
         """
         Return a new TObject with specified variables removed (set unconstrained).
 
@@ -246,7 +246,7 @@ class TObject:
 
         Parameters
         ----------
-        variable_indices : List[int] | int
+        variable_indices : Tuple[List[int], int]
             A single index or a list of indices to remove.
 
         Returns
