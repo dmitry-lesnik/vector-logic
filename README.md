@@ -137,8 +137,8 @@ This project uses Poetry for dependency management.
 2. Clone the repository:
 
     ```bash
-    git clone https://github.com/dmitry-lesnik/rule-engine.git
-    cd rule-engine
+    git clone https://github.com/dmitry-lesnik/vector-logic.git
+    cd vector-logic
     ```
 
 3. Install dependencies:

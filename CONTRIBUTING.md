@@ -25,8 +25,8 @@ dependency management and packaging.
 1. **Fork & Clone the Repository**:
    First, fork the repository on GitHub, then clone your fork locally.
    ```bash
-   git clone https://github.com/dmitry-lesnik/rule-engine.git
-   cd rule-engine
+   git clone https://github.com/dmitry-lesnik/vector-logic.git
+   cd vector-logic
    ```
 
 2. **Install Dependencies**:
