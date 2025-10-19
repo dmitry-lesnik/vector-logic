@@ -5,9 +5,10 @@ name: Python package CI
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - '**' # This triggers the workflow on a push to ANY branch
   pull_request:
-    branches: [ master ]
+    branches: [ master ] # This continues to trigger on pull requests targeting the master branch
 
 jobs:
   build:
