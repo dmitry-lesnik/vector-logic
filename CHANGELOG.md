@@ -11,20 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Future features will be listed here.
 
-## [0.2.0] - 2025-10-17
+## [0.1.1] - 2025-10-19
 
 ### Changed
 
-- `predict()` is now independent of the engine's compilation status, allowing for on-the-fly inference. This can be
-  significantly faster for single queries with restrictive evidence.
+- Fixed typos in README and CONTRIBUTING
 
-- `compile()` is now an optional, explicit optimization step. It is recommended for use cases involving many predictions
-  against a static knowledge base.
-
-- The engine's API is now stricter: accessing the `.valid_set` property or calling `.get_variable_value()` and
-  `.is_contradiction()` will raise an `AttributeError` if the engine has not been compiled first.
-
-## [0.1.0] - 2025-10-13
+## [0.1.0] - 2025-10-19
 
 ### Added
 
