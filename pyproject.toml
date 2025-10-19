@@ -3,14 +3,14 @@ name = "rule-engine"
 version = "0.1.0"
 description = "A library for a simple rule engine."
 authors = [
-    { name = "Dmitry Lesnik" }
+    { name = "Dmitry Lesnik", email = "dmitry@stratyfy.com" }
 ]
 readme = "README.md"
 license = "MIT"
+keywords = ["rule-engine", "rules", "business-rules", "logic"]
+homepage = "https://github.com/dmitry-lesnik/rule-engine"
+repository = "https://github.com/dmitry-lesnik/rule-engine"
 
-# requires-python = ">=3.11"
-# dependencies = [
-# ]
 
 [tool.poetry]
 packages = [{ include = "rule_engine" }]

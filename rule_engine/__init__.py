@@ -1,7 +1,13 @@
 """
-rule_engine
+Rule Engine Package.
 
-A library for a simple rule engine.
+This package provides a simple rule engine based on state vector representation.
+It allows for defining logical rules and performing logical inference.
+
+The main components exposed are:
+- Engine: The main interface for creating and managing a rule engine instance.
+- StateVector: A core data structure representing a set of logical states.
+- TObject: A fundamental building block representing a single row of a state vector.
 """
 
 __version__ = "0.1.0"

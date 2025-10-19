@@ -1,5 +1,10 @@
 """
-This module defines the StateVector class, a core data structure for the rule engine.
+Defines the StateVector class, a core data structure for the rule engine.
+
+This module provides the `StateVector` class, which represents a collection of
+`TObject` instances. It is the primary data structure for representing logical
+rules and knowledge bases. The class provides methods for logical operations,
+simplification, and analysis.
 """
 
 from collections import defaultdict
@@ -13,14 +18,11 @@ class StateVector:
     Represents an immutable collection of TObjects, defining a set of valid logical states.
 
     This class is the primary data structure for representing logical rules and
-    knowledge bases. Operations like multiplication and simplification are
-    performed by creating new StateVector instances, ensuring immutability.
-
-    Parameters
-    ----------
-    t_objects : List[TObject], optional
-        A list of TObjects to initialize the state vector with.
-        If None, an empty state vector is created. Defaults to None.
+    knowledge bases. A StateVector can be thought of as a Disjunctive Normal
+    Form (DNF), where each `TObject` is a conjunction of literals, and the
+    vector itself is a disjunction of these conjunctions. Operations like
+    multiplication and simplification are performed by creating new `StateVector`
+    instances, ensuring immutability.
 
     Attributes
     ----------
@@ -31,19 +33,36 @@ class StateVector:
     """
 
     def __init__(self, t_objects: Optional[List[TObject]] = None):
+        """
+        Initializes the StateVector.
+
+        Parameters
+        ----------
+        t_objects : List[TObject], optional
+            A list of TObjects to initialize the state vector with. The
+            interpretation of the input is as follows:
+            - `StateVector()` or `StateVector([])`: Creates an empty vector,
+              which represents an infeasible state (a logical contradiction).
+            - `StateVector([TObject()])`: Creates a trivial vector containing
+              a single, unconstrained TObject. This represents a tautology,
+              where all possible states are allowed.
+            - `StateVector([...])`: A standard vector with one or more
+              constrained TObjects.
+        """
         self._t_objects: tuple[TObject, ...] = tuple(t_objects) if t_objects is not None else tuple()
         self._pivot_set_cache: Optional[Set[int]] = None
 
     def __eq__(self, other: "StateVector") -> bool:
         """
-        Checks if two StateVectors are structurally identical.
+        Check if two StateVectors are structurally identical.
 
         Equality is determined by comparing the sorted tuples of TObjects.
-        This is primarily for debugging and testing.
+        This is primarily useful for debugging and testing.
 
         .. warning::
            This method does not check for logical equivalence. Two logically
-           equivalent StateVectors may not be equal.
+           equivalent but structurally different StateVectors will not be
+           considered equal.
 
         Parameters
         ----------
@@ -57,11 +76,12 @@ class StateVector:
         """
         if not isinstance(other, StateVector):
             return NotImplemented
+        # Sorting is necessary because the internal order of TObjects is not guaranteed.
         return sorted(self._t_objects) == sorted(other._t_objects)
 
     def __mul__(self, other: "StateVector") -> "StateVector":
         """
-        Calculates the product of two StateVectors.
+        Calculate the product of two StateVectors.
 
         The product corresponds to the logical AND operation, finding the
         intersection of valid states between the two vectors. The resulting
@@ -82,7 +102,7 @@ class StateVector:
             return NotImplemented
 
         if self.is_contradiction() or other.is_contradiction():
-            return StateVector()
+            return StateVector()  # Product with a contradiction is a contradiction
 
         if self.is_trivial():
             return other
@@ -91,16 +111,17 @@ class StateVector:
 
         new_t_objects = [prod for t1 in self._t_objects for t2 in other._t_objects if not (prod := t1 * t2).is_null]
 
-        # A single iteration is a pragmatic choice for performance during compilation chains.
+        # A single iteration of simplification is a pragmatic choice for performance
+        # during long compilation chains.
         return StateVector(new_t_objects).simplify(max_num_iter=1)
 
     def __repr__(self) -> str:
-        """Returns an unambiguous string representation of the StateVector."""
+        """Return an unambiguous string representation of the StateVector."""
         return f"StateVector(t_objects={self._t_objects!r})"
 
     def size(self) -> int:
         """
-        Returns the number of TObjects in the state vector.
+        Return the number of TObjects in the state vector.
 
         Returns
         -------
@@ -111,11 +132,11 @@ class StateVector:
 
     def pivot_set(self) -> Set[int]:
         """
-        Calculates the union of pivot sets of all TObjects in the vector.
+        Calculate the union of pivot sets of all TObjects in the vector.
 
         The pivot set contains all variable indices that are explicitly
-        defined as 0 or 1 in at least one TObject. The result is cached
-        after the first calculation.
+        constrained (set to 0 or 1) in at least one TObject. The result is
+        cached after the first calculation for efficiency.
 
         Returns
         -------
@@ -134,15 +155,19 @@ class StateVector:
 
     def _subsumption_reduction(self) -> Tuple["StateVector", bool]:
         """
-        Performs one pass of subsumption reduction.
+        Perform one pass of subsumption reduction.
 
         This method removes more specific TObjects that are covered by more
-        general ones. For example, '1 - -' subsumes '1 1 -'.
+        general ones. For example, the TObject representing `(1, -, -)`
+        subsumes (is a superset of) `(1, 1, -)`, so the latter can be removed
+        without changing the logical meaning of the StateVector.
 
         Returns
         -------
         Tuple[StateVector, bool]
-            A new StateVector and a boolean flag indicating if any reduction occurred.
+            A tuple containing:
+            - The new, reduced StateVector.
+            - A boolean flag that is True if any reduction occurred.
         """
         num_t_objects = len(self._t_objects)
         if num_t_objects < 2:
@@ -164,7 +189,7 @@ class StateVector:
                 elif superset_status == -1:  # t_obj j is superset of t_obj i
                     removed[i] = True
                     was_modified = True
-                    break
+                    break  # t_obj i is removed, move to the next i
         if was_modified:
             final_t_objects = [t for i, t in enumerate(self._t_objects) if not removed[i]]
             return StateVector(final_t_objects), True
@@ -172,10 +197,10 @@ class StateVector:
 
     def _adjacency_reduction(self, max_num_iter: Optional[int] = 1) -> Tuple["StateVector", bool]:
         """
-        Performs an optimized adjacency reduction.
+        Perform an optimized adjacency reduction.
 
-        This method combines adjacent TObjects (e.g., '1 0 -' and '1 1 -'
-        reduce to '1 - -').
+        This method combines adjacent TObjects using the rule `(A & B) | (A & !B) = A`.
+        For example, `(1, 0, -)` and `(1, 1, -)` can be reduced to `(1, -, -)`.
 
         Parameters
         ----------
@@ -185,7 +210,9 @@ class StateVector:
         Returns
         -------
         Tuple[StateVector, bool]
-            A new StateVector and a boolean flag indicating if any reduction occurred.
+            A tuple containing:
+            - The new, reduced StateVector.
+            - A boolean flag that is True if any reduction occurred.
         """
         t_objects = list(self._t_objects)
         was_modified = False
@@ -232,7 +259,7 @@ class StateVector:
                             removed[j] = True
                             new_t_objects.append(reduced_obj)
                             was_reduced_this_iter = True
-                            break  # t_obj1 has been reduced
+                            break  # t_obj i has been reduced, move to next in group1
 
             if was_reduced_this_iter:
                 t_objects = [t_obj for i, t_obj in enumerate(t_objects) if not removed[i]] + new_t_objects
@@ -247,36 +274,37 @@ class StateVector:
 
     def simplify(self, max_num_iter: Optional[int] = 1, reduce_subsumption: bool = False) -> "StateVector":
         """
-        Performs a full reduction of the StateVector.
+        Perform a full simplification of the StateVector.
 
-        This method repeatedly applies adjacency reduction
-        until the StateVector reaches a fixed point (no more simplifications
-        are possible) or `max_num_iter` is reached.
-        Optionally, a subsumption reduction is applied before and after adjacency reduction loop.
+        This method repeatedly applies adjacency reduction and optionally subsumption
+        reduction to minimize the number of TObjects in the vector.
 
         .. note:: The reduction is not canonical, and hence doesn't guarantee
-        a uniqueness of the reduced representation (see https://arxiv.org/abs/2509.10326 for details)
+           a unique representation for logically equivalent StateVectors.
+           (see https://arxiv.org/abs/2509.10326 for details)
 
         Parameters
         ----------
         max_num_iter : int, optional
             The maximum number of passes for the adjacency reduction loop.
-            If None, it runs until a fixed point is reached. Defaults to None.
+            If None, it runs until a fixed point is reached. Defaults to 1.
         reduce_subsumption : bool, optional
-            If True, subsumption reduction is also performed. This is more
-            computationally expensive. Defaults to False.
+            If True, subsumption reduction is also performed, which is more
+            computationally expensive but can yield a smaller vector.
+            Defaults to False.
 
         Returns
         -------
         StateVector
             A new, simplified StateVector.
         """
+        # Remove nulls and duplicates. `dict.fromkeys` preserves order.
         t_objects = list(dict.fromkeys(t for t in self._t_objects if not t.is_null))
 
+        # If any TObject is trivial (fully unconstrained), it covers all possible states.
         if any(t_obj.is_trivial for t_obj in t_objects):
             return StateVector([TObject()])
 
-        t_objects = list(dict.fromkeys(t_objects))
         current_sv = StateVector(t_objects)
 
         if reduce_subsumption:
@@ -292,18 +320,48 @@ class StateVector:
         return current_sv
 
     def negate_variables(self, variable_indices: List[int] | int) -> "StateVector":
-        """Returns a new StateVector with specified variables negated."""
+        """
+        Return a new StateVector with specified variables negated.
+
+        Parameters
+        ----------
+        variable_indices : List[int] | int
+            A single index or a list of indices to negate.
+
+        Returns
+        -------
+        StateVector
+            A new StateVector with the variables negated in each TObject.
+        """
         new_t_objects = [t.negate_variables(variable_indices) for t in self._t_objects]
         return StateVector(new_t_objects)
 
     def remove_variables(self, variable_indices: List[int] | int) -> "StateVector":
-        """Returns a new StateVector with specified variables removed."""
+        """
+        Return a new StateVector with specified variables removed.
+
+        This operation makes the StateVector more general by turning the specified
+        variable indices into unconstrained states in all TObjects.
+
+        Parameters
+        ----------
+        variable_indices : List[int] | int
+            A single index or a list of indices to remove.
+
+        Returns
+        -------
+        StateVector
+            A new StateVector with the variables removed.
+        """
         new_t_objects = [t.remove_variables(variable_indices) for t in self._t_objects]
         return StateVector(new_t_objects)
 
     def is_contradiction(self) -> bool:
         """
-        Checks if the state vector represents a contradiction.
+        Check if the state vector represents a contradiction.
+
+        A contradiction occurs when the set of valid states is empty, meaning
+        the vector contains no TObjects.
 
         Returns
         -------
@@ -314,10 +372,11 @@ class StateVector:
 
     def is_trivial(self) -> bool:
         """
-        Checks if the state vector is trivial.
+        Check if the state vector is trivial (a tautology).
 
         A state vector is trivial if it contains exactly one TObject, and that
-        TObject is itself trivial (represents all possible states).
+        TObject is itself trivial (represents all possible states, i.e., no
+        constraints).
 
         Returns
         -------
@@ -328,7 +387,10 @@ class StateVector:
 
     def var_value(self, index: int) -> int:
         """
-        Checks the consolidated value of a variable across all TObjects.
+        Check the consolidated value of a variable across all TObjects.
+
+        This method determines if a variable has a consistent state (always 1 or
+        always 0) across all possible states represented by the vector.
 
         Parameters
         ----------
@@ -338,9 +400,10 @@ class StateVector:
         Returns
         -------
         int
-            - 1 if the variable is consistently True.
-            - 0 if the variable is consistently False.
-            - -1 if the variable is mixed or "don't care" in any TObject.
+            - 1 if the variable is consistently True across all TObjects.
+            - 0 if the variable is consistently False across all TObjects.
+            - -1 if the variable is mixed (sometimes True, sometimes False) or
+              is unconstrained in any TObject.
 
         Raises
         ------
@@ -352,16 +415,18 @@ class StateVector:
 
         first_value = self._t_objects[0].var_value(index)
         if first_value == -1:
+            # If it's unconstrained in any TObject, the consolidated value is undetermined.
             return -1
 
         for t_obj in self._t_objects[1:]:
             if t_obj.var_value(index) != first_value:
+                # If the value differs in any other TObject, it's mixed.
                 return -1
         return first_value
 
     def to_string(self, max_index: Optional[int] = None, indent: int = 0, print_brackets: bool = True) -> str:
         """
-        Generates a formatted string representation of the StateVector.
+        Generate a formatted string representation of the StateVector.
 
         Parameters
         ----------
@@ -387,16 +452,10 @@ class StateVector:
 
         effective_max_index = max_index
         if effective_max_index is None:
-            all_indices = set()
-            for t_obj in self._t_objects:
-                all_indices.update(t_obj.pivot_set)
-
+            all_indices = self.pivot_set()
             effective_max_index = max(all_indices) if all_indices else 0
 
-        if print_brackets:
-            content_indent_str = " " * (indent + 4)
-        else:
-            content_indent_str = base_indent_str
+        content_indent_str = " " * (indent + 4) if print_brackets else base_indent_str
 
         string_lines = [
             content_indent_str + t_obj.to_string(max_index=effective_max_index) for t_obj in self._t_objects
@@ -409,7 +468,7 @@ class StateVector:
 
     def print(self, max_index: Optional[int] = None, indent: int = 0, print_brackets: bool = True):
         """
-        Prints the formatted string representation of the StateVector.
+        Print the formatted string representation of the StateVector.
 
         Parameters
         ----------

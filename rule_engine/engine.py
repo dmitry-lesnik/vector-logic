@@ -1,5 +1,9 @@
 """
-This module defines the main Engine class for the rule engine.
+Core module for the rule engine.
+
+This module provides the main `Engine` class, which orchestrates the entire
+process of rule management, compilation, and inference. It also defines
+the `InferenceResult` class for handling the outcomes of predictions.
 """
 
 import re
@@ -36,7 +40,16 @@ class InferenceResult:
         """The raw StateVector result of the inference."""
         return self._state_vector
 
-    def size(self):
+    def size(self) -> int:
+        """
+        Return the size of the underlying StateVector.
+        The size represents the number of TObjects in the StateVector.
+
+        Returns
+        -------
+        int
+            The number of TObjects.
+        """
         return self._state_vector.size()
 
     def get_value(self, variable_name: str) -> Optional[int]:
@@ -176,8 +189,8 @@ class Engine:
             self.add_rule(rule)
 
     @property
-    def variables(self):
-        """The list of variable names in the engine."""
+    def variables(self) -> List[str]:
+        """Return the sorted list of unique variable names."""
         return self._variables
 
     @property
@@ -196,7 +209,17 @@ class Engine:
         return self._is_compiled
 
     @property
-    def intermediate_sizes(self):
+    def intermediate_sizes(self) -> List[int]:
+        """
+        Return sizes of intermediate state vectors during compilation.
+
+        This is a debugging tool to inspect the complexity of the compilation process.
+
+        Returns
+        -------
+        List[int]
+            A list of intermediate StateVector sizes.
+        """
         return self._intermediate_sizes
 
     @property
@@ -225,12 +248,42 @@ class Engine:
 
     def add_rule(self, rule_string: str):
         """
-        Adds a new rule to the engine's uncompiled set.
+        Adds and converts a new rule to the engine's uncompiled set.
+
+        This method parses a string representation of a logical rule and
+        converts it into its corresponding StateVector representation. The
+        new rule is added to a pending list, ready for compilation. Adding a
+        new rule will mark the engine as "not compiled".
 
         Parameters
         ----------
         rule_string : str
-            The rule to add, e.g., "(x1 && x2) => x3".
+            The logical rule to add.
+
+        Notes
+        -----
+        The rule syntax supports standard propositional logic operators.
+        Variables must be valid Python identifiers (letters, numbers,
+        underscores) and must have been declared when the Engine was
+        initialized.
+
+        Supported Operators (in order of precedence):
+        - `!`         : NOT (Negation)
+        - `&&`        : AND
+        - `||`        : OR
+        - `^^`        : XOR (Exclusive OR)
+        - `=>`        : IMPLIES
+        - `<=`        : IS IMPLIED BY
+        - `=` / `<=>` : EQUIVALENT
+
+        Use parentheses `()` to group expressions and override default
+        operator precedence.
+
+        Examples
+        --------
+        >>> engine.add_rule("sky_is_grey && humidity_is_high => it_will_rain")
+        >>> engine.add_rule("take_umbrella = (it_will_rain || has_forecast)")
+        >>> engine.add_rule("!wind_is_strong")
         """
         self._uncompiled_rules.append(rule_string)
         converter = RuleConverter(self._variable_map)
@@ -440,7 +493,21 @@ class Engine:
     @staticmethod
     def _validate_variables(variables: List[str]):
         """
-        Checks if all variable names are conformal.
+        Validate variable names.
+
+        Checks if all variable names are "conformal". A variable name is considered
+        conformal if it contains only alphanumeric characters and underscores, and
+        does not start with a number.
+
+        Parameters
+        ----------
+        variables : List[str]
+            The list of variable names to validate.
+
+        Raises
+        ------
+        ValueError
+            If a variable name is not conformal.
         """
         conformal_pattern = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
         for var in variables:

@@ -357,7 +357,7 @@ def test_var_value_mixed_one_and_zero():
     assert sv.var_value(1) == -1
 
 
-def test_var_value_with_dont_care():
+def test_unconstrained_var_value():
     """
     Tests var_value when at least one TObject has undefined (-1) state
     for the index. The result should be -1.
@@ -382,5 +382,5 @@ def test_var_value_single_tobject():
     sv_zero = StateVector([TObject(zeros={1})])
     assert sv_zero.var_value(1) == 0
 
-    sv_dont_care = StateVector([TObject(ones={2})])
-    assert sv_dont_care.var_value(1) == -1
+    sv_unconstrained = StateVector([TObject(ones={2})])
+    assert sv_unconstrained.var_value(1) == -1

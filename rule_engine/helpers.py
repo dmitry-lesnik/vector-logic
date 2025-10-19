@@ -1,9 +1,18 @@
-from typing import List
+"""
+Helper functions for optimising StateVector multiplication.
+
+This module contains functions for calculating and updating similarity matrices
+based on the pivot sets of StateVectors. These matrices are used to guide the
+multiplication strategy in the main engine, aiming to reduce the size of
+intermediate results.
+"""
+
+from typing import List, Tuple
 
 import numpy as np
 
 
-def calc_ps_unions_intersections(pivot_sets: list[set[int]]):
+def calc_ps_unions_intersections(pivot_sets: List[set[int]]) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculates the sizes of unions and intersections for a given list of pivot sets.
 
@@ -22,6 +31,8 @@ def calc_ps_unions_intersections(pivot_sets: list[set[int]]):
         is the size of the intersection of `pivot_sets[i]` and `pivot_sets[j]`.
     """
     num_svs = len(pivot_sets)
+    if num_svs == 0:
+        return np.array([[]]), np.array([[]])
     max_idx = max([max(p_set) for p_set in pivot_sets])
 
     # 1. Create a boolean matrix where rows are pivot sets and columns are variables
@@ -46,11 +57,34 @@ def calc_ps_unions_intersections(pivot_sets: list[set[int]]):
 
 
 def update_ps_unions_intersections(
-    union_sizes: np.ndarray, intersection_sizes: np.ndarray, indices_to_remove: list[int], pivot_sets
-):
+    union_sizes: np.ndarray,
+    intersection_sizes: np.ndarray,
+    indices_to_remove: list[int],
+    pivot_sets: List[set[int]],
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Update pivot sets union and intersection matrices,
-    after some state vectors were removed, and one state vector appended
+    Efficiently update union and intersection size matrices.
+
+    This function is called after a cluster of StateVectors has been multiplied.
+    It removes the rows/columns corresponding to the original vectors and appends
+    a new row/column for the resulting product vector.
+
+    Parameters
+    ----------
+    union_sizes : np.ndarray
+        The current union sizes matrix.
+    intersection_sizes : np.ndarray
+        The current intersection sizes matrix.
+    indices_to_remove : list[int]
+        A list of row/column indices to remove from the matrices.
+    pivot_sets : List[set[int]]
+        The *new* list of pivot sets, including the one for the newly
+        created product vector (expected to be at the end).
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        A tuple containing the updated union and intersection size matrices.
     """
     for i in indices_to_remove:
         union_sizes = np.delete(union_sizes, i, axis=0)
@@ -105,7 +139,10 @@ def find_next_cluster(
     if len(pivot_sets) <= max_cluster_size:
         return list(range(len(pivot_sets)))
 
-    scores_table = intersection_sizes / union_sizes
+    # Replace division by zero with 0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        scores_table = np.nan_to_num(intersection_sizes / union_sizes)
+
     np.fill_diagonal(scores_table, 0)
 
     row_scores = np.max(scores_table**2, axis=1)
