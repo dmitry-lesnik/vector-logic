@@ -19,7 +19,7 @@ jobs:
         python-version: [ "3.9", "3.11" ]
         # Test against a specific version from the 1.2x series and the latest version.
         # Using 1.26.4 as it's the final release of the 1.26 series.
-        numpy-version: [ "1.26.4", "2.3.4" ]
+        numpy-version: [ "1.26.4", "latest" ]
 
     steps:
       - name: Check out repository
