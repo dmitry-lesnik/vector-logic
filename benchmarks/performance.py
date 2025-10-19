@@ -160,9 +160,11 @@ def run__compile_stats():
     plt.tight_layout()
     plt.show()
     previous_result = """
+    [Intel_i7-12700H_31GB_Kubuntu_24.04.3_6.8.0-85-generic]
+    ---------------------
     M_range = [30, 35, 40, 45]
-    time_mean = [0.105 0.08  0.044 0.016]
-    time_max = [0.568 0.993 0.204 0.109]
+    time_mean = [0.096 0.073 0.043 0.016]
+    time_max = [0.508 0.905 0.19  0.102]
     """
     print("\nprevious result:")
     print(previous_result)
@@ -187,6 +189,7 @@ def run__compile_one():
     print(engine.intermediate_sizes)
     print(f"duration = {duration:.3g} ")
     previous_result = """
+    [Intel_i7-12700H_31GB_Kubuntu_24.04.3_6.8.0-85-generic]
     ---------------------
     seed = 42
     num_rules = 60
@@ -211,6 +214,8 @@ def run__to_compile_or_not_to_compile():
     predict_one(compile_=True)
     predict_one(compile_=False)
     previous_result = """
+    [Intel_i7-12700H_31GB_Kubuntu_24.04.3_6.8.0-85-generic]
+    ---------------------
     Running predict_one() with compile = True
     Compilation duration: 3.4746 seconds
     intermediate_sizes: [2, 1, 3, 6, 6, 5, 5, 2, 1, 7, 16, 3, 22, 4, 3, 6, 4, 8, 2, 5, 6, 3, 6, 6, 4, 6, 5, 3, 10, 10, 112, 12, 9, 10, 9, 12, 24, 86, 1069, 10, 16, 66, 11, 135, 4, 22, 12, 42, 2984, 21312, 21012, 6970, 24, 5550, 3722, 4006, 928, 1662, 16362]
@@ -230,6 +235,6 @@ def run__to_compile_or_not_to_compile():
 
 
 if __name__ == "__main__":
-    run__compile_one()
-    # run__compile_stats()
+    # run__compile_one()
+    run__compile_stats()
     # run__to_compile_or_not_to_compile()
