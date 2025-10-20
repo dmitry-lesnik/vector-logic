@@ -10,7 +10,7 @@ The main components exposed are:
 - TObject: A fundamental building block representing a single row of a state vector.
 """
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __author__ = "Dmitry Lesnik"
 __credits__ = "Stratyfy Inc"
 

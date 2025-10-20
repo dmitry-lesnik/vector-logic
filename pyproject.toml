@@ -1,18 +1,26 @@
 [project]
 name = "vector-logic"
-version = "0.1.1"
+version = "0.1.2"
 description = "A library for a simple rule engine."
 authors = [
     { name = "Dmitry Lesnik", email = "dmitry@stratyfy.com" }
 ]
 readme = "README.md"
 license = "MIT"
-keywords = ["rule-engine", "rules", "business-rules", "logic", "state-vector", "state-algebra"]
+#license = { text = "MIT" }
+keywords = [
+    "rule-engine",
+    "rules",
+    "business-rules",
+    "logic",
+    "state-vector",
+    "state-algebra"
+]
 
 [project.urls]
 Homepage = "https://github.com/dmitry-lesnik/vector-logic"
 Repository = "https://github.com/dmitry-lesnik/vector-logic"
-"Bug Tracker" = "https://github.com/dmitry-lesnik/vector-logic/issues"
+
 
 [tool.poetry]
 packages = [{ include = "vectorlogic" }]
@@ -24,14 +32,14 @@ numpy = ">=1.26.4, <3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
-black = "^24.0.0" # Corrected to a realistic version
+black = "^24.0.0"
 
 [tool.poetry.group.profiling]
 optional = true
 dependencies = { yappi = "^1.5.0" }
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core>=1.5.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]

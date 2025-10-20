@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Future features will be listed here.
 
+## [0.1.2] - 2025-10-20
+
+### Changed
+
+- Updated pyproject.toml to conform to the PEP 621 standard, resolving packaging warnings.
+
+- Minor improvements to `README.md`.
+
 ## [0.1.1] - 2025-10-19
 
 ### Changed
