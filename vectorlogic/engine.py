@@ -293,7 +293,15 @@ class Engine:
 
     def add_evidence(self, evidence: Dict[str, bool]):
         """
-        Adds an evidence statement to the engine's uncompiled set.
+        Adds an evidence statement as a new rule to the uncompiled set.
+
+        This method provides a convenient way to assert that a set of variables
+        have specific boolean values. It is logically equivalent to adding a
+        rule that is a conjunction of literals. For example, the
+        evidence `{x1: True, x2: False}` is equivalent to
+        adding the rule `(x1 && !x2)`.
+
+        Adding new evidence marks the engine as "not compiled".
 
         Parameters
         ----------
@@ -359,9 +367,10 @@ class Engine:
         """
         Calculates an inference result without altering the engine's state.
 
-        This method performs an on-the-fly calculation by multiplying all
-        StateVectors in the engine (both compiled and uncompiled) with a new
-        StateVector generated from the provided evidence.
+        This method performs an on-the-fly inference by temporarily combining
+        the provided evidence with the engine's existing knowledge base (both
+        compiled and uncompiled rules). The evidence is not permanently added
+        to the engine.
 
         Parameters
         ----------
@@ -372,6 +381,14 @@ class Engine:
         -------
         InferenceResult
             A result object wrapping the final StateVector from this inference.
+
+        Notes
+        -----
+        The evidence dictionary is treated as a temporary rule for this
+        inference. It is logically equivalent to a conjunction of literals.
+        For example, providing the evidence `{x1: True, x2: False}` is
+        the same as temporarily adding the rule `x1 && !x2` for this
+        calculation.
         """
         ones = {self._variable_map[var] for var, val in evidence.items() if val}
         zeros = {self._variable_map[var] for var, val in evidence.items() if not val}

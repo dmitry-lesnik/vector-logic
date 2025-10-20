@@ -1,6 +1,6 @@
 [project]
 name = "vector-logic"
-version = "0.1.2"
+version = "0.1.3a0"
 description = "A library for a simple rule engine."
 authors = [
     { name = "Dmitry Lesnik", email = "dmitry@stratyfy.com" }
