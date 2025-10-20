@@ -8,7 +8,7 @@ on:
     branches:
       - '**' # This triggers the workflow on a push to ANY branch
   pull_request:
-    branches: [ master ] # This continues to trigger on pull requests targeting the master branch
+    branches: [ master ] # Trigger on pull requests targeting master
 
 jobs:
   build:
@@ -18,34 +18,39 @@ jobs:
       matrix:
         python-version: [ "3.9", "3.12" ]
         # Test against a specific version from the 1.2x series and the latest version.
-        # Using 1.26.4 as it's the final release of the 1.26 series.
         numpy-version: [ "1.26.4", "latest" ]
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Updated to v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # Updated to v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1
+        # Pinning to a specific, recent version of the action to avoid future breaking changes.
+        uses: snok/install-poetry@v1.4.0
 
-      - name: Install base dependencies
-        run: poetry install
+      - name: Configure Poetry
+        run: poetry config virtualenvs.in-project true
 
-      - name: Install specific NumPy version
+      - name: Install dependencies with specific NumPy version
         run: |
           if [ "${{ matrix.numpy-version }}" = "latest" ]; then
-            echo "Installing the latest version of NumPy..."
-            poetry run pip install --upgrade numpy
+            echo "Installing dependencies with the latest version of NumPy..."
+            # Let poetry resolve the latest compatible version
+            poetry install --with dev
           else
-            echo "Installing NumPy version ${{ matrix.numpy-version }}..."
-            poetry run pip install --upgrade "numpy==${{ matrix.numpy-version }}"
+            echo "Installing dependencies with NumPy version ${{ matrix.numpy-version }}..."
+            # Use 'poetry add' to cleanly override the version for this CI run
+            poetry add "numpy==${{ matrix.numpy-version }}"
+            poetry install --with dev
           fi
+
+      - name: Show installed packages
+        run: poetry show
 
       - name: Run tests
         run: poetry run pytest
-

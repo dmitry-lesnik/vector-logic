@@ -6,8 +6,8 @@ authors = [
     { name = "Dmitry Lesnik", email = "dmitry@stratyfy.com" }
 ]
 readme = "README.md"
-license = "MIT"
-#license = { text = "MIT" }
+#license = "MIT"
+license = { text = "MIT" }
 keywords = [
     "rule-engine",
     "rules",
