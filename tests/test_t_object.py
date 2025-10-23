@@ -250,3 +250,36 @@ def test_remove_variables():
     t3 = TObject(is_null=True)
     removed_t3 = t3.remove_variables([1])
     assert removed_t3.is_null
+
+
+def test_to_dict():
+    """Tests the to_dict method."""
+    index_to_name = {1: "a", 2: "b", 3: "c"}
+
+    # Test with a regular TObject
+    t_obj = TObject(ones={1, 3}, zeros={2})
+    expected_dict = {"a": True, "c": True, "b": False}
+    assert t_obj.to_dict(index_to_name) == expected_dict
+
+    # Test with a TObject that has unconstrained variables
+    t_obj_unconstrained = TObject(ones={1}, zeros={})
+    expected_dict_unconstrained = {"a": True}
+    assert t_obj_unconstrained.to_dict(index_to_name) == expected_dict_unconstrained
+
+    # Test with a trivial TObject
+    t_obj_trivial = TObject()
+    assert t_obj_trivial.to_dict(index_to_name) == {}
+
+    # Test with a null TObject
+    t_obj_null = TObject(is_null=True)
+    assert t_obj_null.to_dict(index_to_name) is None
+
+    # Test with an empty index_to_name map
+    t_obj_with_vars = TObject(ones={1}, zeros={2})
+    assert t_obj_with_vars.to_dict({}) == {}
+
+    # Test with an index_to_name map that doesn't cover all variables
+    t_obj_more_vars = TObject(ones={1, 4}, zeros={2})
+    partial_map = {1: "a", 2: "b"}
+    expected_partial = {"a": True, "b": False}
+    assert t_obj_more_vars.to_dict(partial_map) == expected_partial
