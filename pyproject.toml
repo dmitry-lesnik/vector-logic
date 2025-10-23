@@ -1,7 +1,7 @@
 [project]
 name = "vector-logic"
 version = "0.1.3a0"
-description = "A library for a simple rule engine."
+description = "A library for a simple rules engine."
 authors = [
     { name = "Dmitry Lesnik", email = "dmitry@stratyfy.com" }
 ]
@@ -9,7 +9,7 @@ readme = "README.md"
 #license = "MIT"
 license = { text = "MIT" }
 keywords = [
-    "rule-engine",
+    "rules-engine",
     "rules",
     "business-rules",
     "logic",

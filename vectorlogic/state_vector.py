@@ -1,5 +1,5 @@
 """
-Defines the StateVector class, a core data structure for the rule engine.
+Defines the StateVector class, a core data structure for the rules engine.
 
 This module provides the `StateVector` class, which represents a collection of
 `TObject` instances. It is the primary data structure for representing logical

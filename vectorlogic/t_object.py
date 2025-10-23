@@ -2,7 +2,7 @@
 Defines the core TObject class for ternary logic representation.
 
 This module provides the `TObject` class, which is a fundamental data structure
-in the rule engine. It represents an immutable ternary object, where each
+in the rules engine. It represents an immutable ternary object, where each
 variable can be in one of three states: True (1), False (0), or Schrödinger's cat (-).
 """
 

@@ -25,7 +25,7 @@ class AstTransformer:
 
     The `pyparsing` library, by default, produces a nested list structure. This
     class provides a set of parse actions to convert this structure into a
-    more explicit and consistent tuple-based format that the rule engine can
+    more explicit and consistent tuple-based format that the rules engine can
     easily process.
 
     Parameters

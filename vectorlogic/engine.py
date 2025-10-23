@@ -1,5 +1,5 @@
 """
-Core module for the rule engine.
+Core module for the rules engine.
 
 This module provides the main `Engine` class, which orchestrates the entire
 process of rule management, compilation, and inference. It also defines
@@ -130,7 +130,7 @@ class InferenceResult:
 
 class Engine:
     """
-    The main class for the rule engine.
+    The main class for the rules engine.
 
     This class manages the lifecycle of a rule-based system, including
     variable definitions, rule addition, compilation of the knowledge base,

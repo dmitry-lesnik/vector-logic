@@ -1,4 +1,4 @@
-# Contributing to the Rule Engine Project
+# Contributing to the Vector-Logic Project
 
 First off, thank you for considering contributing! We welcome any help you can offer, from reporting bugs to submitting
 new features. Following these guidelines helps us collaborate effectively and shows respect for the time of everyone
