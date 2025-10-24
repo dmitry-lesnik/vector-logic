@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Future features will be listed here.
 
+## [1.2.0 Unreleased]
+
+### Added
+
+- API: export t-object as a dictionary
+- API: iterate through rows of a state vector represented as dictionaries
+- API: add upper bound estimation of the number of states in a state vector
+
+### Changed
+
+- Optimisation improvement: multiply all vectors by a single-row vector to reduce their size
+
 ## [0.1.2] - 2025-10-20
 
 ### Changed
