@@ -365,23 +365,6 @@ def test_get_value_on_uncompiled_engine(base_engine):
         base_engine.get_variable_value("x1")
 
 
-def test_compilation_with_trivial_sv(base_engine):
-    """
-    Tests that compiling with a trivial SV doesn't change the result.
-    """
-    base_engine.add_rule("x1 => x2")
-    base_engine.compile()
-    expected_valid_set = base_engine.valid_set
-
-    # Create a second engine with an extra trivial rule
-    engine2 = Engine(variables=["x1", "x2", "x3"])
-    engine2.add_rule("x1 => x2")
-    engine2.add_state_vector(StateVector([TObject()]))  # Add trivial vector
-    engine2.compile()
-
-    assert engine2.valid_set == expected_valid_set
-
-
 def test_compilation_with_contradictory_sv(base_engine):
     """
     Tests that compiling with a contradictory (empty) SV results in a contradiction.

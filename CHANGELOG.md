@@ -17,7 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - API: export t-object as a dictionary
 - API: iterate through rows of a state vector represented as dictionaries
-- API: add upper bound estimation of the number of states in a state vector
 
 ### Changed
 
