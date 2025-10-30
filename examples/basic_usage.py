@@ -35,7 +35,7 @@ from vectorlogic import Engine
 variables = ["x1", "x2", "x3", "x4"]
 
 # 2. Create an Engine instance
-engine = Engine(variables=variables, name="My Simple Rule Engine")
+engine = Engine(variables=variables, name="My Simple Rules Engine")
 
 # 3. Add your logical rules and initial evidence
 engine.add_rule("x1 = (x2 && x3)")

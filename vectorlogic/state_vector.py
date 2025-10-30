@@ -1,5 +1,5 @@
 """
-Defines the StateVector class, a core data structure for the rule engine.
+Defines the StateVector class, a core data structure for the rules engine.
 
 This module provides the `StateVector` class, which represents a collection of
 `TObject` instances. It is the primary data structure for representing logical
@@ -8,7 +8,7 @@ simplification, and analysis.
 """
 
 from collections import defaultdict
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple, Iterable, Dict
 
 from .t_object import TObject
 
@@ -465,6 +465,22 @@ class StateVector:
         if print_brackets:
             return f"{base_indent_str}{{\n{content}\n{base_indent_str}}}"
         return content
+
+    def iter_dicts(self, variable_map: Dict[str, int]) -> Iterable[Optional[Dict[str, bool]]]:
+        """
+        Yield a dictionary for each TObject in the StateVector.
+
+        This method provides an iterator that converts each TObject into a
+        dictionary of variable names and boolean values.
+
+        Yields
+        -------
+        Iterable[Optional[Dict[str, bool]]]
+            An iterator of dictionaries, where each dictionary represents a TObject.
+        """
+        index_to_name = {v: k for k, v in variable_map.items()}
+        for t_obj in self._t_objects:
+            yield t_obj.to_dict(index_to_name)
 
     def print(self, max_index: Optional[int] = None, indent: int = 0, print_brackets: bool = True):
         """

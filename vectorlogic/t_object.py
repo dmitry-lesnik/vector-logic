@@ -2,11 +2,11 @@
 Defines the core TObject class for ternary logic representation.
 
 This module provides the `TObject` class, which is a fundamental data structure
-in the rule engine. It represents an immutable ternary object, where each
+in the rules engine. It represents an immutable ternary object, where each
 variable can be in one of three states: True (1), False (0), or Schrödinger's cat (-).
 """
 
-from typing import Iterable, Optional, List, Tuple
+from typing import Dict, Iterable, Optional, List, Tuple
 
 
 class TObject:
@@ -179,6 +179,33 @@ class TObject:
                 result[i - 1] = "0"
 
         return " ".join(result)
+
+    def to_dict(self, index_to_name: Dict[int, str]) -> Optional[Dict[str, bool]]:
+        """
+        Convert the TObject to a dictionary of variable names and boolean values.
+
+        Parameters
+        ----------
+        index_to_name : dict[int, str]
+            A mapping from 1-based indices to their corresponding variable names.
+
+        Returns
+        -------
+        Optional[dict[str, bool]]
+            A dictionary where keys are variable names and values are booleans
+            (True for 1s, False for 0s). Returns None if the TObject is null.
+        """
+        if self.is_null:
+            return None
+
+        result = {}
+        for i in self.ones:
+            if i in index_to_name:
+                result[index_to_name[i]] = True
+        for i in self.zeros:
+            if i in index_to_name:
+                result[index_to_name[i]] = False
+        return result
 
     def __mul__(self, other: "TObject") -> "TObject":
         """

@@ -8,6 +8,12 @@ from vectorlogic.state_vector import StateVector
 from vectorlogic.t_object import TObject
 
 
+@pytest.fixture
+def variable_map():
+    """Provides a sample variable map for tests."""
+    return {"a": 1, "b": 2, "c": 3, "d": 4}
+
+
 def test_state_vector_default_initialization():
     """Tests that a StateVector can be initialized with no arguments."""
     sv = StateVector()
@@ -384,3 +390,40 @@ def test_var_value_single_tobject():
 
     sv_unconstrained = StateVector([TObject(ones={2})])
     assert sv_unconstrained.var_value(1) == -1
+
+
+def test_iter_dicts(variable_map):
+    """
+    Tests the iter_dicts method to ensure it correctly yields dictionaries
+    representing the TObjects in the StateVector.
+    """
+    t_obj1 = TObject(ones={1}, zeros={2})  # a=True, b=False
+    t_obj2 = TObject(ones={3})  # c=True
+    t_obj3 = TObject()  # Trivial object, no constraints
+
+    sv = StateVector([t_obj1, t_obj2, t_obj3])
+
+    expected_dicts = [
+        {"a": True, "b": False},
+        {"c": True},
+        {},
+    ]
+
+    result_dicts = list(sv.iter_dicts(variable_map))
+
+    # The order is not guaranteed, so we compare sets of frozensets
+    # to make the comparison order-independent.
+    expected_set = {frozenset(d.items()) for d in expected_dicts}
+    result_set = {frozenset(d.items()) for d in result_dicts}
+
+    assert result_set == expected_set
+
+
+def test_iter_dicts_empty_state_vector(variable_map):
+    """
+    Tests that iter_dicts on an empty (contradictory) StateVector
+    yields an empty iterator.
+    """
+    sv = StateVector()  # An empty state vector
+    result_dicts = list(sv.iter_dicts(variable_map))
+    assert result_dicts == []

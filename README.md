@@ -1,4 +1,5 @@
 # vector-logic: A Lightweight Python Rules Engine
+
 [![PyPI version](https://badge.fury.io/py/vector-logic.svg)](https://badge.fury.io/py/vector-logic)
 [![Downloads](https://pepy.tech/badge/vector-logic)](https://pepy.tech/project/vector-logic)
 [![CI](https://github.com/dmitry-lesnik/vector-logic/actions/workflows/ci.yml/badge.svg)](https://github.com/dmitry-lesnik/vector-logic/actions/workflows/ci.yml)
@@ -12,8 +13,8 @@ easy to define rules, add evidence, and infer outcomes.
 
 ## Why Use vector-logic?
 
-- **Expressive Rule Syntax:** Define complex rules with a natural, human-readable syntax (e.g., (sky_is_grey &&
-  humidity_is_high) => it_will_rain).
+- **Expressive Rule Syntax:** Define complex rules with a natural, human-readable syntax (e.g. `(sky_is_grey &&
+  humidity_is_high) => it_will_rain`).
 
 - **Powerful Inference:** Combine multiple rules and evidence into a single, consolidated knowledge base to make
   predictions and check for contradictions.
