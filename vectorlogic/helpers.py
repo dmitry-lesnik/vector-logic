@@ -86,22 +86,26 @@ def update_ps_unions_intersections(
     tuple[np.ndarray, np.ndarray]
         A tuple containing the updated union and intersection size matrices.
     """
-    for i in indices_to_remove:
+    sorted_indices = sorted(indices_to_remove, reverse=True)
+    for i in sorted_indices:
         union_sizes = np.delete(union_sizes, i, axis=0)
         union_sizes = np.delete(union_sizes, i, axis=1)
         intersection_sizes = np.delete(intersection_sizes, i, axis=0)
         intersection_sizes = np.delete(intersection_sizes, i, axis=1)
 
-    new_row_col_size = len(pivot_sets)
-    new_union_sizes = np.zeros((new_row_col_size, new_row_col_size), dtype=int)
-    new_union_sizes[:-1, :-1] = union_sizes
-    new_intersection_sizes = np.zeros((new_row_col_size, new_row_col_size), dtype=int)
-    new_intersection_sizes[:-1, :-1] = intersection_sizes
+    N = len(union_sizes)  # size before taking into account newly appended pivot sets
+    N1 = len(pivot_sets)  # new size
+    new_union_sizes = np.zeros((N1, N1), dtype=int)
+    new_union_sizes[:N, :N] = union_sizes
+    new_intersection_sizes = np.zeros((N1, N1), dtype=int)
+    new_intersection_sizes[:N, :N] = intersection_sizes
 
-    for k in range(new_row_col_size - 1):
-        new_union_sizes[k, -1] = new_union_sizes[-1, k] = len(pivot_sets[k].union(pivot_sets[-1]))
-        new_intersection_sizes[k, -1] = new_intersection_sizes[-1, k] = len(pivot_sets[k].intersection(pivot_sets[-1]))
-        new_union_sizes[-1, -1] = new_intersection_sizes[-1, -1] = len(pivot_sets[-1])
+    for i in range(N, N1):
+        for k in range(i):
+            new_union_sizes[i, k] = new_union_sizes[k, i] = len(pivot_sets[k].union(pivot_sets[i]))
+            new_intersection_sizes[i, k] = new_intersection_sizes[k, i] = len(
+                pivot_sets[k].intersection(pivot_sets[i]))
+        new_union_sizes[i, i] = new_intersection_sizes[i, i] = len(pivot_sets[i])
     return new_union_sizes, new_intersection_sizes
 
 
@@ -145,7 +149,7 @@ def find_next_cluster(
 
     np.fill_diagonal(scores_table, 0)
 
-    row_scores = np.max(scores_table**2, axis=1)
+    row_scores = np.max(scores_table ** 2, axis=1)
     best_row_index = np.argmax(row_scores)
     scores_in_best_row = scores_table[best_row_index, :]
 
