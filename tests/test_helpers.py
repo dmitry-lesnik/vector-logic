@@ -23,16 +23,8 @@ def test_calc_ps_unions_intersections_basic(sample_pivot_sets):
     """
     union_sizes, intersection_sizes = calc_ps_unions_intersections(sample_pivot_sets)
 
-    # Expected intersection sizes:
-    # p1&p1=3, p1&p2=1, p1&p3=1
-    # p2&p1=1, p2&p2=3, p2&p3=1
-    # p3&p1=1, p3&p2=1, p3&p3=3
     expected_intersections = np.array([[3, 1, 1], [1, 3, 2], [1, 2, 3]])
 
-    # Expected union sizes:
-    # p1|p1=3, p1|p2=5, p1|p3=5
-    # p2|p1=5, p2|p2=3, p2|p3=5
-    # p3|p1=5, p3|p2=5, p3|p3=3
     expected_unions = np.array([[3, 5, 5], [5, 3, 4], [5, 4, 3]])
 
     np.testing.assert_array_equal(intersection_sizes, expected_intersections)
@@ -57,6 +49,29 @@ def test_calc_ps_unions_intersections_disjoint_sets():
 
     expected_intersections = np.array([[2, 0, 0], [0, 2, 0], [0, 0, 2]])
     expected_unions = np.array([[2, 4, 4], [4, 2, 4], [4, 4, 2]])
+
+    np.testing.assert_array_equal(intersection_sizes, expected_intersections)
+    np.testing.assert_array_equal(union_sizes, expected_unions)
+
+
+def test_calc_ps_unions_intersections_empty_sets():
+    """
+    Tests the calculation with completely disjoint pivot sets.
+    """
+    pivot_sets = [{1, 2}, set(), {2, 3}]
+    union_sizes, intersection_sizes = calc_ps_unions_intersections(pivot_sets)
+
+    expected_unions = np.array([[2, 2, 3], [2, 0, 2], [3, 2, 2]])
+    expected_intersections = np.array([[2, 0, 1], [0, 0, 0], [1, 0, 2]])
+
+    np.testing.assert_array_equal(intersection_sizes, expected_intersections)
+    np.testing.assert_array_equal(union_sizes, expected_unions)
+
+    pivot_sets = [set(), set(), set()]
+    union_sizes, intersection_sizes = calc_ps_unions_intersections(pivot_sets)
+
+    expected_unions = np.zeros((3, 3), dtype=int)
+    expected_intersections = np.zeros((3, 3), dtype=int)
 
     np.testing.assert_array_equal(intersection_sizes, expected_intersections)
     np.testing.assert_array_equal(union_sizes, expected_unions)

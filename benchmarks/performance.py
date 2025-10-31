@@ -162,6 +162,7 @@ def run__compile_stats():
 def run__compile_one():
     print()
     print("---  Running compile_one() ---")
+    # seed = 42
     seed = 425
     num_rules = 60
     num_vars = 80

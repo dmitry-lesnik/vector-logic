@@ -7,7 +7,7 @@ multiplication strategy in the main engine, aiming to reduce the size of
 intermediate results.
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import numpy as np
 
@@ -33,7 +33,12 @@ def calc_ps_unions_intersections(pivot_sets: List[set[int]]) -> Tuple[np.ndarray
     num_svs = len(pivot_sets)
     if num_svs == 0:
         return np.array([[]]), np.array([[]])
-    max_idx = max([max(p_set) for p_set in pivot_sets])
+
+    max_idx_list = [max(p_set) for p_set in pivot_sets if p_set]
+    max_idx = max(max_idx_list) if max_idx_list else 0
+    if max_idx == 0:
+        # Handle all empty pivot sets (notice that variable indices are 1-based)
+        return np.zeros((num_svs, num_svs), dtype=int), np.zeros((num_svs, num_svs), dtype=int)
 
     # 1. Create a boolean matrix where rows are pivot sets and columns are variables
     presence_matrix = np.zeros((num_svs, max_idx), dtype=bool)
@@ -148,7 +153,7 @@ def find_next_cluster(
 
     np.fill_diagonal(scores_table, 0)
 
-    row_scores = np.max(scores_table ** 2, axis=1)
+    row_scores = np.max(scores_table**2, axis=1)
     best_row_index = np.argmax(row_scores)
     scores_in_best_row = scores_table[best_row_index, :]
 
@@ -159,41 +164,96 @@ def find_next_cluster(
     sorted_indices = sorted_indices[sorted_indices != best_row_index]
 
     top_indices = [int(best_row_index)]
-    for idx in sorted_indices[:max_cluster_size]:
-        top_indices.append(int(idx))
+    for idx in sorted_indices[: max_cluster_size - 1]:  # Corrected loop limit
         if scores_in_best_row[idx] == 0 and len(top_indices) > 1:
             break
-        if len(top_indices) == max_cluster_size:
-            break
+        top_indices.append(int(idx))
 
     return top_indices
 
 
-def find_predator_prey(sv_sizes: List[int], intersection_sizes: np.ndarray):
+def find_predator_prey(
+    sv_sizes: List[int], intersection_sizes: np.ndarray, base: float = 0.8, threshold: float = 1.5
+) -> Tuple[Optional[int], Optional[List[int]]]:
     """
     This method finds one "predator" state vector, and a list of "prey" state vectors. The "prey" state vectors
     will be multiplied by the "predator".
     The idea is that the expected size of the "prey" state vectors should shrink.
 
-    We estimate the size of the product of two state vectors to be n1 * n2 * 0.8^m, where
-    n1  and n2 are the sizes of the operands, and m is the size of intersection of their pivot sets.
+    We estimate the size of the product of two state vectors to be n1 * n2 * base^m, where
+    n1 and n2 are the sizes of the operands, and m is the size of intersection of their pivot sets.
     The relative reduction of the second operand size is thus:
-    score = size_before / size_after = 1/ (n1 * 0.8^m)
-    If the score > 1, this means that the size of the vector n2 is expected to shrink
+    score = size_before / size_after = 1 / (n1 * base^m)
+    If the score > 1, this means that the size of the vector n2 is expected to shrink.
 
-    The method should create a square matrix with scores, according to the following logic:
-    in row i, the scores are calculated as 1 / (n_i * 0.8^m_ij), where n_i is the size of i-th state vector,
-    and m_ij is the size of intersection of i-th and j-th pivot sets
+    The method creates a square matrix with scores, according to the following logic:
+    in row i, the scores are calculated as 1 / (n_i * base^m_ij), where n_i is the size of i-th state vector,
+    and m_ij is the size of intersection of i-th and j-th pivot sets.
 
+    The method finds the best row, in which we have more than one score that is bigger than 1.
+    For every row, we calculate a row-score - the sum of squares of those scores that are bigger than 1.
 
-    The method should find the best row, in which we have more than one score that is bigger than 1.
-    For every row, we can calculate a row-score - the sum of squares of those scores that are bigger than 1
-
-    If there is any row-score bigger than a hard-coded threshold (let it be 1.5), then the method should return
+    If there is any row-score bigger than the threshold, the method returns
     the index of the best row as a "predator" index, and a list of indices of those columns where the score is
     bigger than 1 as "prey" indices.
 
-    Otherwise, the method return None, None
+    Otherwise, the method returns None, None.
 
+    Parameters
+    ----------
+    sv_sizes : List[int]
+        A list of the sizes (number of TObjects) of the StateVectors.
+    intersection_sizes : np.ndarray
+        A square matrix of pivot set intersection sizes.
+    base : float, optional
+        The base for the exponential reduction estimation. Defaults to 0.8.
+    threshold : float, optional
+        The minimum row-score to trigger the predator-prey optimization. Defaults to 1.5.
+
+    Returns
+    -------
+    Tuple[Optional[int], Optional[List[int]]]
+        - (predator_index, [prey_index_1, prey_index_2, ...]) if a predator is found.
+        - (None, None) otherwise.
     """
+    num_svs = len(sv_sizes)
+    if num_svs < 3:
+        return None, None
+
+    with np.errstate(over="ignore", divide="ignore"):
+        # 1. Calculate the m_ij matrix (base^intersection_size)
+        power_matrix = base**intersection_sizes
+
+        # 2. Get n_i as a column vector for broadcasting
+        n_i = np.array(sv_sizes, dtype=float)[:, np.newaxis]
+
+        # 3. Calculate denominator (n_i * base^m_ij)
+        # Avoid division by zero if n_i is 0 (though unlikely for non-contradictory SVs)
+        n_i[n_i == 0] = 1e-9
+        denominator = n_i * power_matrix
+
+        # 4. Calculate scores matrix
+        scores_matrix = 1.0 / denominator
+
+    # 5. Filter for scores > 1
+    np.fill_diagonal(scores_matrix, 0)  # A vector cannot be its own prey
+    scores_gt_1 = scores_matrix * (scores_matrix > 1.0)
+
+    # 6. Calculate row-scores (sum of squares of scores > 1)
+    row_scores = np.sum(scores_gt_1**2, axis=1)
+
+    # 7. Find the best predator
+    best_row_index = np.argmax(row_scores)
+    best_score = row_scores[best_row_index]
+
+    # 8. Check against threshold
+    if best_score > threshold:
+        # Find prey for this predator
+        prey_indices = np.where(scores_gt_1[best_row_index] > 0)[0]
+
+        if prey_indices.size > 0:
+            prey_indices_list = prey_indices.astype(int).tolist()
+            return int(best_row_index), prey_indices_list
+
+    # No predator found
     return None, None
