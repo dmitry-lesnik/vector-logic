@@ -4,6 +4,8 @@ import numpy as np
 
 from vectorlogic.engine import Engine
 
+_my_spec_ = "Intel_i7-12700H_31GB_Kubuntu_24.04.3_6.8.0-85-generic"
+
 
 def generate_random_rule(variables_: list[str], num_vars: int, operators_: list[str], random_state) -> str:
     """Generates a random rule string with the given number of variables."""
@@ -75,8 +77,8 @@ def predict_one(compile_=True):
         engine.compile()
         end_compile_time = time.perf_counter()
         compile_duration = end_compile_time - start_compile_time
-        print(f"Compilation duration: {compile_duration:.4f} seconds")
-        print(f"intermediate_sizes: {engine.intermediate_sizes}")
+        print(f"Compilation duration: {compile_duration:.3g} seconds")
+        print(f"intermediate_sizes: {engine.intermediate_sizes_stats}")
 
     start_predict_time = time.perf_counter()
     output = engine.predict(evidence)
@@ -86,9 +88,9 @@ def predict_one(compile_=True):
 
     predict_duration = end_predict_time - start_predict_time
     overall_time = end_predict_time - start_time
-    print(f"Prediction duration: {predict_duration:.4f} seconds")
-    print(f"Overall time: {overall_time:.4f} seconds")
-    print(f"intermediate_sizes: {engine.intermediate_sizes}")
+    print(f"Prediction duration: {predict_duration:.3g} seconds")
+    print(f"Overall time: {overall_time:.3g} seconds")
+    print(f"intermediate_sizes: {engine.intermediate_sizes_stats}")
 
 
 def run__compile_stats():
@@ -148,8 +150,8 @@ def run__compile_stats():
     # print(f"time_std = {np.round(time_std, 3)}")
     print(f"time_max = {np.round(time_max, 3)}")
 
-    previous_result = """
-    [Intel_i7-12700H_31GB_Kubuntu_24.04.3_6.8.0-85-generic]
+    previous_result = f"""
+    [{_my_spec_}]
     ---------------------
     M_range = [30, 35, 40, 45]
     time_mean = [0.096 0.073 0.043 0.016]
@@ -159,13 +161,13 @@ def run__compile_stats():
     print(previous_result)
 
 
-def run__compile_one():
+def run__compile_one(seed=42, num_rules=60, num_vars=80):
     print()
     print("---  Running compile_one() ---")
     # seed = 42
-    seed = 425
-    num_rules = 60
-    num_vars = 80
+    # seed = 425
+    # num_rules = 60
+    # num_vars = 80
     print(f"seed = {seed}")
     print(f"num_rules = {num_rules}")
     print(f"num_vars = {num_vars}")
@@ -175,27 +177,28 @@ def run__compile_one():
     # print(f"\nrepeat {i + 1} / {repeat}")
     engine = generate_engine(num_rules=num_rules, num_vars=num_vars, random_state=rng)
     duration, engine = measure_compile_time(engine)
-    print("--- State Vector sizes during compilation:")
-    print(engine.intermediate_sizes)
+    print(f"intermediate_sizes: {engine.intermediate_sizes_stats}")
     print(f"duration = {duration:.3g} ")
     previous_result = """
-    [Intel_i7-12700H_31GB_Kubuntu_24.04.3_6.8.0-85-generic]
-    ---------------------
     seed = 42
     num_rules = 60
     num_vars = 80
-    --- State Vector sizes during compilation:
-    [6, 4, 5, 4, 7, 6, 8, 5, 11, 2, 4, 4, 8, 9, 6, 12, 6, 6, 3, 6, 5, 6, 3, 6, 6, 6, 5, 13, 9, 8, 21, 12, 5, 7, 28, 130, 4, 9, 34, 32, 2, 2, 38, 56, 24, 18, 447, 132, 140, 508, 24, 192, 1959, 110, 7036, 12, 2864, 66, 7232]
-    duration = 1.67 
+    intermediate_sizes: {'num_entries': 59, 'min': 2, 'mean': 361.6, 'rms': 1392.6, 'max': 7232}
+    duration = 1.73 
     
     ---------------------
     seed = 425
     num_rules = 60
     num_vars = 80
-    --- State Vector sizes during compilation:
-    [2, 1, 3, 6, 6, 5, 5, 2, 1, 7, 16, 3, 22, 4, 3, 6, 4, 8, 2, 5, 6, 3, 6, 6, 4, 6, 5, 3, 10, 10, 112, 12, 9, 10, 9, 12, 24, 86, 1069, 10, 16, 66, 11, 135, 4, 22, 12, 42, 2984, 21312, 21012, 6970, 24, 5550, 3722, 4006, 928, 1662, 16362]
-    duration = 3.43 
+    intermediate_sizes: {'num_entries': 59, 'min': 1, 'mean': 1463.8, 'rms': 4669.5, 'max': 21312}
+    duration = 3.47 
     """
+    previous_result = f"""
+    [{_my_spec_}]
+    ---------------------
+    {previous_result}
+    """
+
     print("\nprevious results:")
     print(previous_result)
 
@@ -204,27 +207,32 @@ def run__to_compile_or_not_to_compile():
     predict_one(compile_=True)
     predict_one(compile_=False)
     previous_result = """
-    [Intel_i7-12700H_31GB_Kubuntu_24.04.3_6.8.0-85-generic]
-    ---------------------
     Running predict_one() with compile = True
-    Compilation duration: 3.4746 seconds
-    intermediate_sizes: [2, 1, 3, 6, 6, 5, 5, 2, 1, 7, 16, 3, 22, 4, 3, 6, 4, 8, 2, 5, 6, 3, 6, 6, 4, 6, 5, 3, 10, 10, 112, 12, 9, 10, 9, 12, 24, 86, 1069, 10, 16, 66, 11, 135, 4, 22, 12, 42, 2984, 21312, 21012, 6970, 24, 5550, 3722, 4006, 928, 1662, 16362]
-    Size of output: 1728
-    Prediction duration: 0.0518 seconds
-    Overall time: 3.5264 seconds
-    intermediate_sizes: [1728]
+    Compilation duration: 2.84 seconds
+    intermediate_sizes: {'num_entries': 79, 'min': 1, 'mean': 601.8, 'rms': 2677.1, 'max': 17608}
+    Size of output: 1296
+    Prediction duration: 0.0309 seconds
+    Overall time: 2.87 seconds
+    intermediate_sizes: {'num_entries': 1, 'min': 1296, 'mean': 1296.0, 'rms': 1296.0, 'max': 1296}
     
     Running predict_one() with compile = False
     Size of output: 1728
-    Prediction duration: 1.2630 seconds
-    Overall time: 1.2630 seconds
-    intermediate_sizes: [2, 1, 3, 6, 6, 5, 5, 2, 1, 7, 16, 3, 22, 4, 3, 6, 4, 8, 3, 5, 5, 7, 3, 1, 3, 7, 6, 1, 4, 6, 2, 7, 30, 4, 9, 16, 10, 112, 9, 533, 24, 30, 64, 5172, 7, 10, 16, 66, 20, 11, 64, 8032, 624, 22, 864, 18, 356, 121, 6336, 1728]
+    Prediction duration: 0.342 seconds
+    Overall time: 0.342 seconds
+    intermediate_sizes: {'num_entries': 898, 'min': 1, 'mean': 8.4, 'rms': 67.1, 'max': 1728}
+    
+    """
+    previous_result = f"""
+    [{_my_spec_}]
+    ---------------------
+    {previous_result}
     """
     print("\nprevious result:")
     print(previous_result)
 
 
 if __name__ == "__main__":
-    # run__compile_one()
+    # run__compile_one(seed=42)
+    # run__compile_one(seed=425)
     run__compile_stats()
     # run__to_compile_or_not_to_compile()

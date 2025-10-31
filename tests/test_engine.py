@@ -407,6 +407,7 @@ def test_engine_valid_set_iterator():
 
 def test_engine_compile_optimisation():
     """ """
+    print()
     variables = ["v1", "v2", "v3", "v4", "v5", "v6", "v7"]
     engine = Engine(variables=variables)
 
@@ -416,6 +417,10 @@ def test_engine_compile_optimisation():
     engine.add_rule("v5 = !v6")
     engine.add_rule("v6 => (v1 || v2)")
     engine.add_evidence({"v1": False, "v4": False})
-    engine.print()
+    # engine.print()
     engine.compile()
-    engine.print()
+    engine.print(debug_info=True)
+    """
+    0 1 0 0 0 1 -
+    0 - - 0 1 0 -
+    """

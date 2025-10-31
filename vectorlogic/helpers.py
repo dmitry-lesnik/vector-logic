@@ -34,10 +34,14 @@ def calc_ps_unions_intersections(pivot_sets: List[set[int]]) -> Tuple[np.ndarray
     if num_svs == 0:
         return np.array([[]]), np.array([[]])
 
+    if num_svs == 1:
+        return np.array([[len(pivot_sets[0])]]), np.array([[len(pivot_sets[0])]])
+
     max_idx_list = [max(p_set) for p_set in pivot_sets if p_set]
     max_idx = max(max_idx_list) if max_idx_list else 0
     if max_idx == 0:
-        # Handle all empty pivot sets (notice that variable indices are 1-based)
+        # Handle all empty pivot sets
+        # notice that variable indices are 1-based, hence max_idx=0 is only possible if all pivot sets are empty
         return np.zeros((num_svs, num_svs), dtype=int), np.zeros((num_svs, num_svs), dtype=int)
 
     # 1. Create a boolean matrix where rows are pivot sets and columns are variables
@@ -173,7 +177,11 @@ def find_next_cluster(
 
 
 def find_predator_prey(
-    sv_sizes: List[int], intersection_sizes: np.ndarray, base: float = 0.8, threshold: float = 1.5
+    sv_sizes: List[int],
+    intersection_sizes: np.ndarray,
+    base: float = 0.7,
+    threshold: float = 1.5,
+    max_predator_size: int = 2,
 ) -> Tuple[Optional[int], Optional[List[int]]]:
     """
     This method finds one "predator" state vector, and a list of "prey" state vectors. The "prey" state vectors
@@ -220,6 +228,9 @@ def find_predator_prey(
     if num_svs < 3:
         return None, None
 
+    if min(sv_sizes) > max_predator_size:
+        return None, None
+
     with np.errstate(over="ignore", divide="ignore"):
         # 1. Calculate the m_ij matrix (base^intersection_size)
         power_matrix = base**intersection_sizes
@@ -235,19 +246,33 @@ def find_predator_prey(
         # 4. Calculate scores matrix
         scores_matrix = 1.0 / denominator
 
+    # --- add weight to take prey size into account ---
+    # weight = 1 + 2 * (1 - np.exp(- 0.01 * np.array(sv_sizes)))
+    # scores_matrix = scores_matrix ** weight  # increase scores that are > 1, and decrease those that are < 1
+
     # 5. Filter for scores > 1
     np.fill_diagonal(scores_matrix, 0)  # A vector cannot be its own prey
-    scores_gt_1 = scores_matrix * (scores_matrix > 1.0)
+    scores_gt_1 = scores_matrix * (scores_matrix > threshold)
 
-    # 6. Calculate row-scores (sum of squares of scores > 1)
-    row_scores = np.sum(scores_gt_1**2, axis=1)
+    # 6. Calculate row-scores
+    row_scores = np.mean(scores_gt_1**2, axis=1)
+    # row_scores = np.sum(scores_gt_1 ** 2, axis=1)
+    # row_scores = np.sum(scores_gt_1, axis=1)
+
+    # --- Apply predator size constraint ---
+    # Create a mask for predators that are small enough
+    sv_sizes_array = np.array(sv_sizes)
+    predator_size_mask = sv_sizes_array <= max_predator_size
+
+    # Apply the mask: set scores of large predators to 0
+    masked_row_scores = row_scores * predator_size_mask
+    # --- End constraint ---
 
     # 7. Find the best predator
-    best_row_index = np.argmax(row_scores)
-    best_score = row_scores[best_row_index]
+    best_row_index = np.argmax(masked_row_scores)
+    best_score = masked_row_scores[best_row_index]
 
-    # 8. Check against threshold
-    if best_score > threshold:
+    if best_score > 0:
         # Find prey for this predator
         prey_indices = np.where(scores_gt_1[best_row_index] > 0)[0]
 
