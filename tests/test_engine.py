@@ -374,3 +374,36 @@ def test_compilation_with_contradictory_sv(base_engine):
     base_engine.compile()
 
     assert base_engine.is_contradiction()
+
+
+def test_engine_valid_set_iterator():
+    """
+    Tests a full engine workflow: initialization, rule addition, compilation,
+    and conversion of the final valid_set to a list of dictionaries.
+    """
+    # 1. Define variables and create the engine
+    variables = ["v1", "v2", "v3", "v4", "v5", "v6", "v7"]
+    engine = Engine(variables=variables)
+
+    # 2. Add a set of interacting rules
+    engine.add_rule("v1 => v2")  # Implication chain
+    engine.add_rule("(v2 || v3) => v5")
+    engine.add_rule("v1 => (v3 || v4)")
+    engine.add_rule("v5 = !v6")  # Equivalence
+    engine.add_rule("v7 || v2")  # Assert v7 is True
+
+    # 3. Compile the rules into the valid_set
+    engine.compile()
+
+    # 4. Define the expected outcome
+    expected_dicts = [
+        {"v6": True, "v7": True, "v1": False, "v2": False, "v3": False, "v5": False},
+        {"v1": True, "v2": True, "v3": True, "v5": True, "v6": False},
+        {"v1": True, "v2": True, "v4": True, "v5": True, "v3": False, "v6": False},
+        {"v5": True, "v7": True, "v1": False, "v6": False},
+        {"v2": True, "v5": True, "v1": False, "v6": False, "v7": False},
+    ]
+
+    # Compare the results in an order-independent way
+    for i, row_dict in enumerate(engine.valid_set_iter()):
+        assert frozenset(row_dict.items()) == frozenset(expected_dicts[i].items())

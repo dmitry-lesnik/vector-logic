@@ -246,6 +246,32 @@ class Engine:
             raise AttributeError("The 'valid_set' is not available. Call .compile() to build it.")
         return self._valid_set
 
+    def valid_set_iter(self):
+        """
+        Iterates through the valid rows of the compiled knowledge base.
+
+        Each t-object (a row in the valid set) is yielded as a dictionary
+        mapping variable names to their boolean values.
+
+        .. warning::
+           This method will raise an `AttributeError` if the engine has not
+           been compiled.
+
+        Yields
+        ------
+        Dict[str, bool]
+            A dictionary representing a single valid state.
+
+        Raises
+        ------
+        AttributeError
+            If the engine has not been compiled yet. Call `.compile()` first.
+        """
+        # Accessing self.valid_set will automatically check for compilation
+        # and raise an AttributeError if not compiled.
+        # The inverse map is created on the fly for iter_dicts.
+        yield from self.valid_set.iter_dicts(self._variable_map)
+
     def add_rule(self, rule_string: str):
         """
         Adds and converts a new rule to the engine's uncompiled set.
@@ -581,6 +607,7 @@ class Engine:
         # --- Main optimized multiplication loop ---
         intermediate_sizes = []
         pivot_sets = [sv.pivot_set() for sv in remaining_svs]
+        ps_sizes = [sv.size() for sv in remaining_svs]
         union_sizes, intersection_sizes = helpers.calc_ps_unions_intersections(pivot_sets)
 
         while len(remaining_svs) > 1:
@@ -601,10 +628,12 @@ class Engine:
             for i in sorted_indices:
                 del remaining_svs[i]
                 del pivot_sets[i]
+                del ps_sizes[i]
 
             # Add the new product back for the next round
             remaining_svs.append(product_sv)
             pivot_sets.append(product_sv.pivot_set())
+            ps_sizes.append(product_sv.size())
 
             # Update similarity matrices efficiently if there's more work to do
             if len(remaining_svs) > 1:

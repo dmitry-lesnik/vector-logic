@@ -103,8 +103,7 @@ def update_ps_unions_intersections(
     for i in range(N, N1):
         for k in range(i):
             new_union_sizes[i, k] = new_union_sizes[k, i] = len(pivot_sets[k].union(pivot_sets[i]))
-            new_intersection_sizes[i, k] = new_intersection_sizes[k, i] = len(
-                pivot_sets[k].intersection(pivot_sets[i]))
+            new_intersection_sizes[i, k] = new_intersection_sizes[k, i] = len(pivot_sets[k].intersection(pivot_sets[i]))
         new_union_sizes[i, i] = new_intersection_sizes[i, i] = len(pivot_sets[i])
     return new_union_sizes, new_intersection_sizes
 
@@ -149,7 +148,7 @@ def find_next_cluster(
 
     np.fill_diagonal(scores_table, 0)
 
-    row_scores = np.max(scores_table ** 2, axis=1)
+    row_scores = np.max(scores_table**2, axis=1)
     best_row_index = np.argmax(row_scores)
     scores_in_best_row = scores_table[best_row_index, :]
 
