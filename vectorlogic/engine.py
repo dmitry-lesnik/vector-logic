@@ -580,11 +580,11 @@ class Engine:
 
         Notes
         -----
-        This method uses a heuristic to decide the order of multiplication.
-        It iteratively finds the cluster of vectors with the most similar
-        variable usage (highest Jaccard similarity between their pivot sets)
-        and multiplies them first. This can significantly reduce the size of
-        intermediate StateVectors and speed up compilation.
+        This method uses a hybrid heuristic strategy:
+        1. It first attempts to find a "predator-prey" relationship, where one
+           vector is likely to significantly shrink several others.
+        2. If no suitable predator is found, it falls back to a clustering
+           strategy based on Jaccard similarity of pivot sets.
         """
         # --- Handle simple cases and perform initial cleanup ---
         if len(state_vectors) == 0:
@@ -612,45 +612,83 @@ class Engine:
 
         while len(remaining_svs) > 1:
 
-            sv0, SV_i = helpers.find_predator_prey(sv_sizes, intersection_sizes)
-
-            # TODO:
-            #  sv0 is the index if "predator" state vector,
-            #  SV_i is a list of indices of state vectors to be multiplied by sv0
-            #  If sv0 is not None:
-            #  1. skip clustering
-            #  2. multiply all vectors from the list SV_i by sv0
-            #  3. remove sv0 and all SV_i
-            #  4. append the products to the list of remaining_svs, update other lists and objects
-
-            cluster_indices = helpers.find_next_cluster(pivot_sets, union_sizes, intersection_sizes, max_cluster_size)
-
-            # Multiply the vectors in the chosen cluster
-            product_sv = remaining_svs[cluster_indices[0]]
-            for i in cluster_indices[1:]:
-                product_sv *= remaining_svs[i]
-
+            if len(remaining_svs) == 2:
+                # ------- nothing to optimise -------------
+                product_sv = remaining_svs[0] * remaining_svs[1]
                 intermediate_sizes.append(product_sv.size())
-                if product_sv.is_contradiction():
-                    return StateVector(), intermediate_sizes
+                return product_sv, intermediate_sizes
 
-            # --- Update state for the next iteration ---
-            # Remove the original vectors from the list (in reverse order) and matrices
-            sorted_indices = sorted(cluster_indices, reverse=True)
-            for i in sorted_indices:
-                del remaining_svs[i]
-                del pivot_sets[i]
-                del sv_sizes[i]
+            # --- Predator-Prey Heuristic ---
+            if min(sv_sizes) > 2:
+                sv0_idx, prey_indices = None, None
+            else:
+                sv0_idx, prey_indices = helpers.find_predator_prey(sv_sizes, intersection_sizes)
 
-            # Add the new product back for the next round
-            remaining_svs.append(product_sv)
-            pivot_sets.append(product_sv.pivot_set())
-            sv_sizes.append(product_sv.size())
+            if sv0_idx is not None and prey_indices:
+                predator_sv = remaining_svs[sv0_idx]
+                new_products = []
+                indices_to_remove = set(prey_indices)
+                indices_to_remove.add(sv0_idx)
 
-            # Update similarity matrices efficiently if there's more work to do
-            if len(remaining_svs) > 1:
-                union_sizes, intersection_sizes = helpers.update_ps_unions_intersections(
-                    union_sizes, intersection_sizes, sorted_indices, pivot_sets
+                # Multiply predator by all prey
+                for i in prey_indices:
+                    product_sv = predator_sv * remaining_svs[i]
+                    intermediate_sizes.append(product_sv.size())
+                    if product_sv.is_contradiction():
+                        return StateVector(), intermediate_sizes
+                    new_products.append(product_sv)
+
+                # Rebuild the lists
+                sorted_indices = sorted(list(indices_to_remove), reverse=True)
+                for i in sorted_indices:
+                    del remaining_svs[i]
+                    del pivot_sets[i]
+                    del sv_sizes[i]
+
+                # Add the new products back
+                remaining_svs.extend(new_products)
+                pivot_sets.extend([p.pivot_set() for p in new_products])
+                sv_sizes.extend([p.size() for p in new_products])
+
+                # Recalculate similarity matrices (simpler than complex update)
+                if len(remaining_svs) > 1:
+                    union_sizes, intersection_sizes = helpers.calc_ps_unions_intersections(pivot_sets)
+                    # union_sizes, intersection_sizes = helpers.update_ps_unions_intersections(
+                    #     union_sizes, intersection_sizes, sorted_indices, pivot_sets
+                    # )
+
+            else:
+                # --- Jaccard Similarity Clustering (Fallback) ---
+                cluster_indices = helpers.find_next_cluster(
+                    pivot_sets, union_sizes, intersection_sizes, max_cluster_size
                 )
+
+                # Multiply the vectors in the chosen cluster
+                product_sv = remaining_svs[cluster_indices[0]]
+                for i in cluster_indices[1:]:
+                    product_sv *= remaining_svs[i]
+                    intermediate_sizes.append(product_sv.size())
+                    if product_sv.is_contradiction():
+                        return StateVector(), intermediate_sizes
+
+                # --- Update state for the next iteration ---
+                # Remove the original vectors from the list (in reverse order) and matrices
+                sorted_indices = sorted(cluster_indices, reverse=True)
+                for i in sorted_indices:
+                    del remaining_svs[i]
+                    del pivot_sets[i]
+                    del sv_sizes[i]
+
+                # Add the new product back for the next round
+                remaining_svs.append(product_sv)
+                pivot_sets.append(product_sv.pivot_set())
+                sv_sizes.append(product_sv.size())
+
+                # Update similarity matrices efficiently if there's more work to do
+                if len(remaining_svs) > 1:
+                    # union_sizes, intersection_sizes = helpers.calc_ps_unions_intersections(pivot_sets)
+                    union_sizes, intersection_sizes = helpers.update_ps_unions_intersections(
+                        union_sizes, intersection_sizes, sorted_indices, pivot_sets
+                    )
 
         return remaining_svs[0], intermediate_sizes
