@@ -148,7 +148,7 @@ def find_next_cluster(
 
     np.fill_diagonal(scores_table, 0)
 
-    row_scores = np.max(scores_table**2, axis=1)
+    row_scores = np.max(scores_table ** 2, axis=1)
     best_row_index = np.argmax(row_scores)
     scores_in_best_row = scores_table[best_row_index, :]
 
@@ -167,3 +167,33 @@ def find_next_cluster(
             break
 
     return top_indices
+
+
+def find_predator_prey(sv_sizes: List[int], intersection_sizes: np.ndarray):
+    """
+    This method finds one "predator" state vector, and a list of "prey" state vectors. The "prey" state vectors
+    will be multiplied by the "predator".
+    The idea is that the expected size of the "prey" state vectors should shrink.
+
+    We estimate the size of the product of two state vectors to be n1 * n2 * 0.8^m, where
+    n1  and n2 are the sizes of the operands, and m is the size of intersection of their pivot sets.
+    The relative reduction of the second operand size is thus:
+    score = size_before / size_after = 1/ (n1 * 0.8^m)
+    If the score > 1, this means that the size of the vector n2 is expected to shrink
+
+    The method should create a square matrix with scores, according to the following logic:
+    in row i, the scores are calculated as 1 / (n_i * 0.8^m_ij), where n_i is the size of i-th state vector,
+    and m_ij is the size of intersection of i-th and j-th pivot sets
+
+
+    The method should find the best row, in which we have more than one score that is bigger than 1.
+    For every row, we can calculate a row-score - the sum of squares of those scores that are bigger than 1
+
+    If there is any row-score bigger than a hard-coded threshold (let it be 1.5), then the method should return
+    the index of the best row as a "predator" index, and a list of indices of those columns where the score is
+    bigger than 1 as "prey" indices.
+
+    Otherwise, the method return None, None
+
+    """
+    return None, None

@@ -607,10 +607,22 @@ class Engine:
         # --- Main optimized multiplication loop ---
         intermediate_sizes = []
         pivot_sets = [sv.pivot_set() for sv in remaining_svs]
-        ps_sizes = [sv.size() for sv in remaining_svs]
+        sv_sizes = [sv.size() for sv in remaining_svs]  # sizes of state vectors
         union_sizes, intersection_sizes = helpers.calc_ps_unions_intersections(pivot_sets)
 
         while len(remaining_svs) > 1:
+
+            sv0, SV_i = helpers.find_predator_prey(sv_sizes, intersection_sizes)
+
+            # TODO:
+            #  sv0 is the index if "predator" state vector,
+            #  SV_i is a list of indices of state vectors to be multiplied by sv0
+            #  If sv0 is not None:
+            #  1. skip clustering
+            #  2. multiply all vectors from the list SV_i by sv0
+            #  3. remove sv0 and all SV_i
+            #  4. append the products to the list of remaining_svs, update other lists and objects
+
             cluster_indices = helpers.find_next_cluster(pivot_sets, union_sizes, intersection_sizes, max_cluster_size)
 
             # Multiply the vectors in the chosen cluster
@@ -628,12 +640,12 @@ class Engine:
             for i in sorted_indices:
                 del remaining_svs[i]
                 del pivot_sets[i]
-                del ps_sizes[i]
+                del sv_sizes[i]
 
             # Add the new product back for the next round
             remaining_svs.append(product_sv)
             pivot_sets.append(product_sv.pivot_set())
-            ps_sizes.append(product_sv.size())
+            sv_sizes.append(product_sv.size())
 
             # Update similarity matrices efficiently if there's more work to do
             if len(remaining_svs) > 1:
