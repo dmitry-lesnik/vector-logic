@@ -595,6 +595,53 @@ class Engine:
                 raise ValueError(f"Variable name '{var}' is not conformal.")
 
     @staticmethod
+    def _update_multiplication_state(
+        remaining_svs: List[StateVector],
+        pivot_sets: List[set],
+        sv_sizes: List[int],
+        union_sizes: np.ndarray,
+        intersection_sizes: np.ndarray,
+        indices_to_remove: List[int],
+        new_products: List[StateVector],
+    ) -> Tuple[bool, List[StateVector], List[set], List[int], np.ndarray, np.ndarray]:
+        """
+        Helper to update the state lists after a multiplication step.
+
+        Modifies the lists in place and returns the updated similarity matrices.
+
+        Returns:
+            Tuple: (is_finished, updated_svs, updated_pivots, updated_sizes,
+                    updated_unions, updated_intersections)
+        """
+        # ---- Update the lists --------
+        sorted_indices = sorted(list(indices_to_remove), reverse=True)
+        for i in sorted_indices:
+            del remaining_svs[i]
+            del pivot_sets[i]
+            del sv_sizes[i]
+
+        remaining_svs.extend(new_products)
+        pivot_sets.extend([p.pivot_set() for p in new_products])
+        sv_sizes.extend([p.size() for p in new_products])
+
+        if len(remaining_svs) == 1:
+            # --- Final vector produced, multiplication is finished -------
+            return True, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes
+
+        # ----  Update similarity matrices -----------
+        num_added = len(pivot_sets) - (len(union_sizes) - len(sorted_indices))
+        if num_added / len(remaining_svs) < 0.05:
+            # ---- update if added few rows --------
+            union_sizes, intersection_sizes = helpers.update_ps_unions_intersections(
+                union_sizes, intersection_sizes, sorted_indices, pivot_sets
+            )
+        else:
+            # ---- recalculate if added many rows --------
+            union_sizes, intersection_sizes = helpers.calc_ps_unions_intersections(pivot_sets)
+
+        return False, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes
+
+    @staticmethod
     def multiply_all_vectors(
         state_vectors: List[StateVector], max_cluster_size: int = 2
     ) -> Tuple[StateVector, List[int]]:
@@ -641,7 +688,6 @@ class Engine:
             product_sv = remaining_svs[0] * remaining_svs[1]
             return product_sv, [product_sv.size()]
 
-        # --- Main optimized multiplication loop ---
         intermediate_sizes = []
         pivot_sets = [sv.pivot_set() for sv in remaining_svs]
         sv_sizes = [sv.size() for sv in remaining_svs]  # sizes of state vectors
@@ -651,21 +697,19 @@ class Engine:
         max_num_predator_prey_loops = (np.array(sv_sizes) <= 2).sum()
         counter = 0
         while len(remaining_svs) > 1:
-
+            counter += 1
+            if counter > max_num_predator_prey_loops:
+                break  # Reached loop limit
             if len(remaining_svs) == 2:
-                # ------- nothing to optimise -------------
-                product_sv = remaining_svs[0] * remaining_svs[1]
-                intermediate_sizes.append(product_sv.size())
-                return product_sv, intermediate_sizes
+                break  # Let main clustering loop handle the final simple multiplication
 
+            # --- Predator-Prey Heuristic ---
             sv0_idx, prey_indices = helpers.find_predator_prey(
                 sv_sizes, intersection_sizes, base=0.6, threshold=1.2, max_predator_size=2
             )
             if sv0_idx is None:
-                # print("  ---   Exit predator-prey: no predator found ---")
-                break
+                break  # No predator found, move to clustering
 
-            # print("+")
             predator_sv = remaining_svs[sv0_idx]
             new_products = []
             indices_to_remove = set(prey_indices)
@@ -683,42 +727,27 @@ class Engine:
                     return StateVector(), intermediate_sizes
                 new_products.append(product_sv)
 
-            # ---- Update the lists --------
-            sorted_indices = sorted(list(indices_to_remove), reverse=True)
-            for i in sorted_indices:
-                del remaining_svs[i]
-                del pivot_sets[i]
-                del sv_sizes[i]
+            # ---- Update the state using the helper method ----
+            indices_to_remove = list(indices_to_remove)
+            is_finished, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes = (
+                Engine._update_multiplication_state(
+                    remaining_svs,
+                    pivot_sets,
+                    sv_sizes,
+                    union_sizes,
+                    intersection_sizes,
+                    indices_to_remove,
+                    new_products,
+                )
+            )
 
-            remaining_svs.extend(new_products)
-            pivot_sets.extend([p.pivot_set() for p in new_products])
-            sv_sizes.extend([p.size() for p in new_products])
-
-            if len(remaining_svs) == 1:
+            if is_finished:
                 return remaining_svs[0], intermediate_sizes
 
-            # ----  Update similarity matrices -----------
-            num_added = len(pivot_sets) - (len(union_sizes) - len(sorted_indices))
-            if num_added / len(remaining_svs) < 0.05:
-                # print("-- update --")
-                # ---- update if added few rows --------
-                union_sizes, intersection_sizes = helpers.update_ps_unions_intersections(
-                    union_sizes, intersection_sizes, sorted_indices, pivot_sets
-                )
-            else:
-                # ---- recalculate if added many rows --------
-                # print("-- recalculate --")
-                union_sizes, intersection_sizes = helpers.calc_ps_unions_intersections(pivot_sets)
-
-            counter += 1
-            if counter >= max_num_predator_prey_loops:
-                break
-
-            # ---- If the predator-prey step is no longer effective (not reducing
-            # ---- prey size), exit this optimization loop and proceed to clustering.
             if not deltas or sum(deltas) <= 0:
-                # print("  ---   Exit predator-prey: no delta ---")
+                # ---- If the predator-prey step is no longer effective, exit.
                 break
+        # ====== END OF PREDATOR-PREY LOOP ===============
 
         # ======  JACCARD SIMILARITY CLUSTERING ==========
         while len(remaining_svs) > 1:
@@ -739,31 +768,20 @@ class Engine:
                 if product_sv.is_contradiction():
                     return StateVector(), intermediate_sizes
 
-            # --- Update state for the next iteration ---
-            sorted_indices = sorted(cluster_indices, reverse=True)
-            for i in sorted_indices:
-                del remaining_svs[i]
-                del pivot_sets[i]
-                del sv_sizes[i]
-
-            remaining_svs.append(product_sv)
-            pivot_sets.append(product_sv.pivot_set())
-            sv_sizes.append(product_sv.size())
-
-            if len(remaining_svs) == 1:
-                return remaining_svs[0], intermediate_sizes
-
-            # ----  Update similarity matrices -----------
-            num_added = len(pivot_sets) - (len(union_sizes) - len(sorted_indices))
-            if num_added / len(remaining_svs) < 0.05:
-                # print("-- update --")
-                # ---- update if added few rows --------
-                union_sizes, intersection_sizes = helpers.update_ps_unions_intersections(
-                    union_sizes, intersection_sizes, sorted_indices, pivot_sets
+            # ---- Update the state using the helper method ----
+            is_finished, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes = (
+                Engine._update_multiplication_state(
+                    remaining_svs,
+                    pivot_sets,
+                    sv_sizes,
+                    union_sizes,
+                    intersection_sizes,
+                    indices_to_remove=cluster_indices,
+                    new_products=[product_sv],  # The single new product
                 )
-            else:
-                # ---- recalculate if added many rows --------
-                # print("-- recalculate --")
-                union_sizes, intersection_sizes = helpers.calc_ps_unions_intersections(pivot_sets)
+            )
+
+            if is_finished:
+                return remaining_svs[0], intermediate_sizes
 
         return remaining_svs[0], intermediate_sizes
