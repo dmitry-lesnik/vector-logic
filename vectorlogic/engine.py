@@ -187,6 +187,14 @@ class Engine:
         self._compiled_rules: List[str] = []
         self._intermediate_sizes: List[int] = []
 
+        # --- Optimization Hyper-parameters ---
+        # (Advanced users can tune these on the instance)
+        self._opt_predator_base: float = 0.6
+        self._opt_predator_threshold: float = 1.2
+        self._opt_max_predator_size: int = 2
+        self._opt_max_cluster_size: int = 2
+        # --- End ---
+
         for rule in rules or []:
             self.add_rule(rule)
 
@@ -253,6 +261,16 @@ class Engine:
             "mean": float(np.round(np.mean(sizes_array), 1)),
             "rms": float(np.round(np.sqrt(np.mean(sizes_array**2)), 1)),
             "max": int(np.max(sizes_array)),
+        }
+
+    @property
+    def opt_config(self) -> Dict[str, float | int]:
+        """Returns a dictionary of the current optimization hyper-parameters."""
+        return {
+            "predator_base": self._opt_predator_base,
+            "predator_threshold": self._opt_predator_threshold,
+            "max_predator_size": self._opt_max_predator_size,
+            "max_cluster_size": self._opt_max_cluster_size,
         }
 
     @property
@@ -417,7 +435,7 @@ class Engine:
             _finalize_compilation()
             return
 
-        valid_set, int_sizes = self.multiply_all_vectors(all_svs)
+        valid_set, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config)
         self._valid_set = valid_set.simplify()
         self._intermediate_sizes.extend(int_sizes)
         _finalize_compilation()
@@ -458,7 +476,7 @@ class Engine:
             all_svs.append(self._valid_set)
         all_svs.append(evidence_sv)
 
-        result_sv, int_sizes = self.multiply_all_vectors(all_svs)
+        result_sv, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config)
         self._intermediate_sizes = int_sizes
         return InferenceResult(result_sv, self._variable_map)
 
@@ -631,7 +649,10 @@ class Engine:
 
         # ----  Update similarity matrices -----------
         # Decide whether to do a full recalculation or a cheaper update.
-        # Updating has fewer operations, but uses for-loop -- preferred for fewer rows to be updated
+        # Recalculating is O(N*M + N^2) but is more accurate.
+        # Updating is O(N*k) but can be slow if k (num_added) is large.
+        # We recalculate if the number of new vectors is a significant
+        # fraction of the total, as updating would be nearly as slow.
         num_added = len(pivot_sets) - (len(union_sizes) - len(sorted_indices))
         if num_added / len(remaining_svs) < 0.05:
             # ---- update if added few rows --------
@@ -645,9 +666,7 @@ class Engine:
         return False, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes
 
     @staticmethod
-    def multiply_all_vectors(
-        state_vectors: List[StateVector], max_cluster_size: int = 2
-    ) -> Tuple[StateVector, List[int]]:
+    def multiply_all_vectors(state_vectors: List[StateVector], opt_config: dict) -> Tuple[StateVector, List[int]]:
         """
         Multiplies a list of StateVectors using an optimized clustering strategy.
 
@@ -655,9 +674,8 @@ class Engine:
         ----------
         state_vectors : List[StateVector]
             The list of StateVectors to multiply.
-        max_cluster_size : int, optional
-            The maximum number of vectors to group in a single multiplication
-            step. Defaults to 2.
+        opt_config : dict
+            A dictionary of optimization hyper-parameters.
 
         Returns
         -------
@@ -673,6 +691,13 @@ class Engine:
         2. If no suitable predator is found, it falls back to a clustering
            strategy based on Jaccard similarity of pivot sets.
         """
+        # --- Unpack optimization parameters ---
+        predator_base = opt_config.get("predator_base", 0.6)
+        predator_threshold = opt_config.get("predator_threshold", 1.2)
+        max_predator_size = opt_config.get("max_predator_size", 2)
+        max_cluster_size = opt_config.get("max_cluster_size", 2)
+        # --- End Unpack ---
+
         # --- Handle simple cases and perform initial cleanup ---
         if len(state_vectors) == 0:
             return StateVector(), [0]
@@ -696,8 +721,7 @@ class Engine:
         sv_sizes = [sv.size() for sv in remaining_svs]  # sizes of state vectors
         union_sizes, intersection_sizes = helpers.calc_ps_unions_intersections(pivot_sets)
 
-        # ====== PREDATOR-PREY HEURISTIC ===========
-        max_num_predator_prey_loops = (np.array(sv_sizes) <= 2).sum()
+        max_num_predator_prey_loops = (np.array(sv_sizes) <= max_predator_size).sum()
         counter = 0
         while len(remaining_svs) > 1:
             counter += 1
@@ -708,7 +732,11 @@ class Engine:
 
             # --- Predator-Prey Heuristic ---
             sv0_idx, prey_indices = helpers.find_predator_prey(
-                sv_sizes, intersection_sizes, base=0.6, threshold=1.2, max_predator_size=2
+                sv_sizes,
+                intersection_sizes,
+                base=predator_base,
+                threshold=predator_threshold,
+                max_predator_size=max_predator_size,
             )
             if sv0_idx is None:
                 break  # No predator found, move to clustering
