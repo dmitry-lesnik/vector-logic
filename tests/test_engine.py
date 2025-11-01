@@ -419,7 +419,7 @@ def test_engine_compile_optimisation():
     engine.add_evidence({"v1": False, "v4": False})
     # engine.print()
     engine.compile()
-    engine.print(debug_info=True)
+    # engine.print(debug_info=True)
     """
     0 1 0 0 0 1 -
     0 - - 0 1 0 -

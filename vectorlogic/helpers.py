@@ -184,28 +184,32 @@ def find_predator_prey(
     max_predator_size: int = 2,
 ) -> Tuple[Optional[int], Optional[List[int]]]:
     """
-    This method finds one "predator" state vector, and a list of "prey" state vectors. The "prey" state vectors
-    will be multiplied by the "predator".
-    The idea is that the expected size of the "prey" state vectors should shrink.
+    Finds one "predator" state vector and a list of "prey" state vectors.
 
-    We estimate the size of the product of two state vectors to be n1 * n2 * base^m, where
-    n1 and n2 are the sizes of the operands, and m is the size of intersection of their pivot sets.
-    The relative reduction of the second operand size is thus:
-    score = size_before / size_after = 1 / (n1 * base^m)
-    If the score > 1, this means that the size of the vector n2 is expected to shrink.
+    The "prey" state vectors will be multiplied by the "predator". The idea
+    is that the expected size of the "prey" state vectors should shrink.
 
-    The method creates a square matrix with scores, according to the following logic:
-    in row i, the scores are calculated as 1 / (n_i * base^m_ij), where n_i is the size of i-th state vector,
-    and m_ij is the size of intersection of i-th and j-th pivot sets.
+    We estimate the size of the product of two state vectors to be
+    `n1 * n2 * base^m`, where `n1` and `n2` are the sizes of the operands,
+    and `m` is the size of the intersection of their pivot sets.
 
-    The method finds the best row, in which we have more than one score that is bigger than 1.
-    For every row, we calculate a row-score - the sum of squares of those scores that are bigger than 1.
+    The relative reduction score of the second operand is:
+    `score = size_before / size_after = 1 / (n1 * base^m)`
+    If `score > 1`, the size of vector `n2` is expected to shrink.
 
-    If there is any row-score bigger than the threshold, the method returns
-    the index of the best row as a "predator" index, and a list of indices of those columns where the score is
-    bigger than 1 as "prey" indices.
+    This method calculates a matrix of these scores and looks for a "predator"
+    row `i` (where `n_i` is small, constrained by `max_predator_size`) that
+    has high scores (e.g., > `threshold`) against multiple "prey" columns.
 
-    Otherwise, the method returns None, None.
+    The method finds the best row, in which we have more than one score
+    that is bigger than 1. For every row, we calculate a row-score - the
+    mean of squares of those scores that are bigger than `threshold`.
+
+    If there is any row-score greater than 0, the method returns the
+    index of the best row as a "predator" index, and a list of indices of
+    those columns where the score is bigger than 1 as "prey" indices.
+
+    Otherwise, the method returns (None, None).
 
     Parameters
     ----------
@@ -217,6 +221,8 @@ def find_predator_prey(
         The base for the exponential reduction estimation. Defaults to 0.8.
     threshold : float, optional
         The minimum row-score to trigger the predator-prey optimization. Defaults to 1.5.
+    max_predator_size: int
+        The maximum size (number of TObjects) a StateVector can have to be considered a predator.
 
     Returns
     -------

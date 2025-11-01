@@ -607,7 +607,8 @@ class Engine:
         """
         Helper to update the state lists after a multiplication step.
 
-        Modifies the lists in place and returns the updated similarity matrices.
+        Modifies the lists in place by deleting old items and extending with
+        new ones.
 
         Returns:
             Tuple: (is_finished, updated_svs, updated_pivots, updated_sizes,
@@ -629,6 +630,8 @@ class Engine:
             return True, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes
 
         # ----  Update similarity matrices -----------
+        # Decide whether to do a full recalculation or a cheaper update.
+        # Updating has fewer operations, but uses for-loop -- preferred for fewer rows to be updated
         num_added = len(pivot_sets) - (len(union_sizes) - len(sorted_indices))
         if num_added / len(remaining_svs) < 0.05:
             # ---- update if added few rows --------
