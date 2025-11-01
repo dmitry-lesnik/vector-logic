@@ -162,11 +162,8 @@ To run the test suite, use pytest through Poetry:
 
 ## Further Reading & Theoretical Foundations
 
-This library serves as a practical implementation of the concepts described in the following papers.
+The `vector-logic` library is a practical implementation of an algebraic approach to propositional logic called **State Algebra**. If you're interested in the concepts behind the engine, these resources provide a great starting point:
 
-* [Towards Data Science Article] (Coming Soon) - An article explaining the theory in an accessible way, for which this
-  library is a reference implementation.
+*   [**Building a Rules Engine from First Principles**](https://towardsdatascience.com/building-a-rules-engine-from-first-principles/): A high-level, practical explanation of the main building blocks of State Algebra. This TDS article is the best place to start for understanding the core ideas.
 
-* **State Algebra for Propositional Logic:** For a deeper, more theoretical dive into the intricate details of State
-  Algebra, see the paper on arXiv: https://arxiv.org/abs/2509.10326
-
+*   **State Algebra for Propositional Logic**: For those who want a more formal and rigorous treatment, this paper on arXiv offers a deep, theoretical dive into the mathematics of State Algebra: https://arxiv.org/abs/2509.10326

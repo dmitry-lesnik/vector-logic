@@ -7,7 +7,9 @@ the `InferenceResult` class for handling the outcomes of predictions.
 """
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 from . import helpers
 from .rule_converter import RuleConverter
@@ -185,6 +187,14 @@ class Engine:
         self._compiled_rules: List[str] = []
         self._intermediate_sizes: List[int] = []
 
+        # --- Optimization Hyper-parameters ---
+        # (Advanced users can tune these on the instance)
+        self._opt_predator_base: float = 0.6
+        self._opt_predator_threshold: float = 1.2
+        self._opt_max_predator_size: int = 2
+        self._opt_max_cluster_size: int = 2
+        # --- End ---
+
         for rule in rules or []:
             self.add_rule(rule)
 
@@ -223,6 +233,47 @@ class Engine:
         return self._intermediate_sizes
 
     @property
+    def intermediate_sizes_stats(self) -> Dict[str, float]:
+        """
+        Return statistics about the sizes of intermediate state vectors during compilation.
+
+        This is a debugging tool to inspect the complexity of the compilation process.
+
+        Returns
+        -------
+        Dict[str, float]
+            A dictionary containing 'num_entries', 'min', 'mean', 'rms', and 'max'
+            statistics of the intermediate StateVector sizes.
+        """
+        if not self._intermediate_sizes:
+            return {
+                "num_entries": 0,
+                "min": np.nan,
+                "mean": np.nan,
+                "rms": np.nan,
+                "max": np.nan,
+            }
+
+        sizes_array = np.array(self._intermediate_sizes)
+        return {
+            "num_entries": len(self._intermediate_sizes),
+            "min": int(np.min(sizes_array)),
+            "mean": float(np.round(np.mean(sizes_array), 1)),
+            "rms": float(np.round(np.sqrt(np.mean(sizes_array**2)), 1)),
+            "max": int(np.max(sizes_array)),
+        }
+
+    @property
+    def opt_config(self) -> Dict[str, Union[float, int]]:
+        """Returns a dictionary of the current optimization hyper-parameters."""
+        return {
+            "predator_base": self._opt_predator_base,
+            "predator_threshold": self._opt_predator_threshold,
+            "max_predator_size": self._opt_max_predator_size,
+            "max_cluster_size": self._opt_max_cluster_size,
+        }
+
+    @property
     def valid_set(self) -> StateVector:
         """
         The compiled knowledge base ('valid set') of the engine.
@@ -245,6 +296,32 @@ class Engine:
         if not self._is_compiled or self._valid_set is None:
             raise AttributeError("The 'valid_set' is not available. Call .compile() to build it.")
         return self._valid_set
+
+    def valid_set_iter(self):
+        """
+        Iterates through the valid rows of the compiled knowledge base.
+
+        Each t-object (a row in the valid set) is yielded as a dictionary
+        mapping variable names to their boolean values.
+
+        .. warning::
+           This method will raise an `AttributeError` if the engine has not
+           been compiled.
+
+        Yields
+        ------
+        Dict[str, bool]
+            A dictionary representing a single valid state.
+
+        Raises
+        ------
+        AttributeError
+            If the engine has not been compiled yet. Call `.compile()` first.
+        """
+        # Accessing self.valid_set will automatically check for compilation
+        # and raise an AttributeError if not compiled.
+        # The inverse map is created on the fly for iter_dicts.
+        yield from self.valid_set.iter_dicts(self._variable_map)
 
     def add_rule(self, rule_string: str):
         """
@@ -358,7 +435,7 @@ class Engine:
             _finalize_compilation()
             return
 
-        valid_set, int_sizes = self.multiply_all_vectors(all_svs)
+        valid_set, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config)
         self._valid_set = valid_set.simplify()
         self._intermediate_sizes.extend(int_sizes)
         _finalize_compilation()
@@ -399,7 +476,7 @@ class Engine:
             all_svs.append(self._valid_set)
         all_svs.append(evidence_sv)
 
-        result_sv, int_sizes = self.multiply_all_vectors(all_svs)
+        result_sv, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config)
         self._intermediate_sizes = int_sizes
         return InferenceResult(result_sv, self._variable_map)
 
@@ -503,7 +580,11 @@ class Engine:
 
         if debug_info:
             print("\n--- State Vector sizes evolution during compilation:")
-            print(f"    {self._intermediate_sizes}")
+            # print(f"    {self._intermediate_sizes}")
+            if self._intermediate_sizes:
+                print(f"    {self.intermediate_sizes_stats}")
+            else:
+                print("    No intermediate sizes recorded.")
 
         print("\n==============================")
 
@@ -532,9 +613,60 @@ class Engine:
                 raise ValueError(f"Variable name '{var}' is not conformal.")
 
     @staticmethod
-    def multiply_all_vectors(
-        state_vectors: List[StateVector], max_cluster_size: int = 2
-    ) -> Tuple[StateVector, List[int]]:
+    def _update_multiplication_state(
+        remaining_svs: List[StateVector],
+        pivot_sets: List[set],
+        sv_sizes: List[int],
+        union_sizes: np.ndarray,
+        intersection_sizes: np.ndarray,
+        indices_to_remove: List[int],
+        new_products: List[StateVector],
+    ) -> Tuple[bool, List[StateVector], List[set], List[int], np.ndarray, np.ndarray]:
+        """
+        Helper to update the state lists after a multiplication step.
+
+        Modifies the lists in place by deleting old items and extending with
+        new ones.
+
+        Returns:
+            Tuple: (is_finished, updated_svs, updated_pivots, updated_sizes,
+                    updated_unions, updated_intersections)
+        """
+        # ---- Update the lists --------
+        sorted_indices = sorted(list(indices_to_remove), reverse=True)
+        for i in sorted_indices:
+            del remaining_svs[i]
+            del pivot_sets[i]
+            del sv_sizes[i]
+
+        remaining_svs.extend(new_products)
+        pivot_sets.extend([p.pivot_set() for p in new_products])
+        sv_sizes.extend([p.size() for p in new_products])
+
+        if len(remaining_svs) == 1:
+            # --- Final vector produced, multiplication is finished -------
+            return True, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes
+
+        # ----  Update similarity matrices -----------
+        # Decide whether to do a full recalculation or a cheaper update.
+        # Recalculating is O(N*M + N^2) but is more accurate.
+        # Updating is O(N*k) but can be slow if k (num_added) is large.
+        # We recalculate if the number of new vectors is a significant
+        # fraction of the total, as updating would be nearly as slow.
+        num_added = len(pivot_sets) - (len(union_sizes) - len(sorted_indices))
+        if num_added / len(remaining_svs) < 0.05:
+            # ---- update if added few rows --------
+            union_sizes, intersection_sizes = helpers.update_ps_unions_intersections(
+                union_sizes, intersection_sizes, sorted_indices, pivot_sets
+            )
+        else:
+            # ---- recalculate if added many rows --------
+            union_sizes, intersection_sizes = helpers.calc_ps_unions_intersections(pivot_sets)
+
+        return False, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes
+
+    @staticmethod
+    def multiply_all_vectors(state_vectors: List[StateVector], opt_config: dict) -> Tuple[StateVector, List[int]]:
         """
         Multiplies a list of StateVectors using an optimized clustering strategy.
 
@@ -542,9 +674,8 @@ class Engine:
         ----------
         state_vectors : List[StateVector]
             The list of StateVectors to multiply.
-        max_cluster_size : int, optional
-            The maximum number of vectors to group in a single multiplication
-            step. Defaults to 2.
+        opt_config : dict
+            A dictionary of optimization hyper-parameters.
 
         Returns
         -------
@@ -554,12 +685,19 @@ class Engine:
 
         Notes
         -----
-        This method uses a heuristic to decide the order of multiplication.
-        It iteratively finds the cluster of vectors with the most similar
-        variable usage (highest Jaccard similarity between their pivot sets)
-        and multiplies them first. This can significantly reduce the size of
-        intermediate StateVectors and speed up compilation.
+        This method uses a hybrid heuristic strategy:
+        1. It first attempts to find a "predator-prey" relationship, where one
+           vector is likely to significantly shrink several others.
+        2. If no suitable predator is found, it falls back to a clustering
+           strategy based on Jaccard similarity of pivot sets.
         """
+        # --- Unpack optimization parameters ---
+        predator_base = opt_config.get("predator_base", 0.6)
+        predator_threshold = opt_config.get("predator_threshold", 1.2)
+        max_predator_size = opt_config.get("max_predator_size", 2)
+        max_cluster_size = opt_config.get("max_cluster_size", 2)
+        # --- End Unpack ---
+
         # --- Handle simple cases and perform initial cleanup ---
         if len(state_vectors) == 0:
             return StateVector(), [0]
@@ -578,38 +716,103 @@ class Engine:
             product_sv = remaining_svs[0] * remaining_svs[1]
             return product_sv, [product_sv.size()]
 
-        # --- Main optimized multiplication loop ---
         intermediate_sizes = []
         pivot_sets = [sv.pivot_set() for sv in remaining_svs]
+        sv_sizes = [sv.size() for sv in remaining_svs]  # sizes of state vectors
         union_sizes, intersection_sizes = helpers.calc_ps_unions_intersections(pivot_sets)
 
+        max_num_predator_prey_loops = (np.array(sv_sizes) <= max_predator_size).sum()
+        counter = 0
         while len(remaining_svs) > 1:
-            cluster_indices = helpers.find_next_cluster(pivot_sets, union_sizes, intersection_sizes, max_cluster_size)
+            counter += 1
+            if counter > max_num_predator_prey_loops:
+                break  # Reached loop limit
+            if len(remaining_svs) == 2:
+                break  # Let main clustering loop handle the final simple multiplication
 
-            # Multiply the vectors in the chosen cluster
-            product_sv = remaining_svs[cluster_indices[0]]
-            for i in cluster_indices[1:]:
-                product_sv *= remaining_svs[i]
+            # --- Predator-Prey Heuristic ---
+            sv0_idx, prey_indices = helpers.find_predator_prey(
+                sv_sizes,
+                intersection_sizes,
+                base=predator_base,
+                threshold=predator_threshold,
+                max_predator_size=max_predator_size,
+            )
+            if sv0_idx is None:
+                break  # No predator found, move to clustering
+
+            predator_sv = remaining_svs[sv0_idx]
+            new_products = []
+            indices_to_remove = set(prey_indices)
+            indices_to_remove.add(sv0_idx)
+
+            # --- Multiply all prey by predator ----
+            deltas = []  # size reductions
+            for i in prey_indices:
+                product_sv = predator_sv * remaining_svs[i]
+                delta = remaining_svs[i].size() - product_sv.size()
+                deltas.append(delta)
 
                 intermediate_sizes.append(product_sv.size())
                 if product_sv.is_contradiction():
                     return StateVector(), intermediate_sizes
+                new_products.append(product_sv)
 
-            # --- Update state for the next iteration ---
-            # Remove the original vectors from the list (in reverse order) and matrices
-            sorted_indices = sorted(cluster_indices, reverse=True)
-            for i in sorted_indices:
-                del remaining_svs[i]
-                del pivot_sets[i]
-
-            # Add the new product back for the next round
-            remaining_svs.append(product_sv)
-            pivot_sets.append(product_sv.pivot_set())
-
-            # Update similarity matrices efficiently if there's more work to do
-            if len(remaining_svs) > 1:
-                union_sizes, intersection_sizes = helpers.update_ps_unions_intersections(
-                    union_sizes, intersection_sizes, sorted_indices, pivot_sets
+            # ---- Update the state using the helper method ----
+            indices_to_remove = list(indices_to_remove)
+            is_finished, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes = (
+                Engine._update_multiplication_state(
+                    remaining_svs,
+                    pivot_sets,
+                    sv_sizes,
+                    union_sizes,
+                    intersection_sizes,
+                    indices_to_remove,
+                    new_products,
                 )
+            )
+
+            if is_finished:
+                return remaining_svs[0], intermediate_sizes
+
+            if not deltas or sum(deltas) <= 0:
+                # ---- If the predator-prey step is no longer effective, exit.
+                break
+        # ====== END OF PREDATOR-PREY LOOP ===============
+
+        # ======  JACCARD SIMILARITY CLUSTERING ==========
+        while len(remaining_svs) > 1:
+
+            if len(remaining_svs) == 2:
+                # ------- nothing to optimise -------------
+                product_sv = remaining_svs[0] * remaining_svs[1]
+                intermediate_sizes.append(product_sv.size())
+                return product_sv, intermediate_sizes
+
+            cluster_indices = helpers.find_next_cluster(pivot_sets, union_sizes, intersection_sizes, max_cluster_size)
+
+            # ----- Multiply the vectors in the chosen cluster --------
+            product_sv = remaining_svs[cluster_indices[0]]
+            for i in cluster_indices[1:]:
+                product_sv *= remaining_svs[i]
+                intermediate_sizes.append(product_sv.size())
+                if product_sv.is_contradiction():
+                    return StateVector(), intermediate_sizes
+
+            # ---- Update the state using the helper method ----
+            is_finished, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes = (
+                Engine._update_multiplication_state(
+                    remaining_svs,
+                    pivot_sets,
+                    sv_sizes,
+                    union_sizes,
+                    intersection_sizes,
+                    indices_to_remove=cluster_indices,
+                    new_products=[product_sv],  # The single new product
+                )
+            )
+
+            if is_finished:
+                return remaining_svs[0], intermediate_sizes
 
         return remaining_svs[0], intermediate_sizes
