@@ -11,13 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Future features will be listed here.
 
-## [1.2.1] - 2025-11-??
+## [0.3.0] - 2025-11-01
+
+### Added
+
+- **Predator-Prey Optimisation Heuristic**: Implemented a new optimisation phase in `Engine.multiply_all_vectors` that
+  runs before Jaccard similarity clustering. This "predator-prey" logic uses small `StateVector` instances (e.g., from
+  evidence) to significantly reduce the size of larger "prey" vectors, dramatically improving compilation performance on
+  many rule sets.
+
+- **Optimisation Parameter API**: Added an `.opt_config` property to the `Engine` class. This allows advanced users to
+  tune the optimisation heuristics (e.g. `max_predator_size`, `max_cluster_size`) by modifying internal attributes like
+  `_opt_max_predator_size` on an engine instance.
 
 ### Changed
 
-- Optimisation: multiply large vectors by a single-row vector before multiplication by clusters
+- Refactored the `Engine.multiply_all_vectors` method, splitting the core optimization logic into smaller, internal
+  static methods (`_update_multiplication_state`) to improve readability and maintainability.
 
-## [1.2.0] - 2025-10-30
+## [0.2.0] - 2025-10-30
 
 ### Added
 
