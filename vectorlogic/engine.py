@@ -7,7 +7,7 @@ the `InferenceResult` class for handling the outcomes of predictions.
 """
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -264,7 +264,7 @@ class Engine:
         }
 
     @property
-    def opt_config(self) -> Dict[str, float | int]:
+    def opt_config(self) -> Dict[str, Union[float, int]]:
         """Returns a dictionary of the current optimization hyper-parameters."""
         return {
             "predator_base": self._opt_predator_base,
