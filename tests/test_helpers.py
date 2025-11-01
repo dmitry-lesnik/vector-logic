@@ -8,6 +8,8 @@ import pytest
 from vectorlogic.helpers import (
     calc_ps_unions_intersections,
     update_ps_unions_intersections,
+    find_next_cluster,
+    find_predator_prey,
 )
 
 
@@ -126,3 +128,125 @@ def test_update_ps_unions_intersections_no_remaining():
     # The function should produce 1x1 matrices for the single remaining set
     np.testing.assert_array_equal(updated_unions, np.array([[3]]))
     np.testing.assert_array_equal(updated_intersections, np.array([[3]]))
+
+
+def test_find_next_cluster(sample_pivot_sets):
+    """
+    Tests the find_next_cluster logic.
+    """
+    union_sizes, intersection_sizes = calc_ps_unions_intersections(sample_pivot_sets)
+
+    # With max_cluster_size = 2
+    # Jaccard similarities:
+    # (0,1): 1/5 = 0.2
+    # (0,2): 1/5 = 0.2
+    # (1,2): 2/4 = 0.5
+    # Row scores (max^2):
+    # 0: 0.2^2 = 0.04
+    # 1: 0.5^2 = 0.25
+    # 2: 0.5^2 = 0.25
+    # Best row is 1 (or 2). Let's say 1.
+    # Scores in row 1: [0.2, 0, 0.5]
+    # Sorted indices (desc): [2, 0]
+    # Cluster: [1, 2]
+    cluster = find_next_cluster(sample_pivot_sets, union_sizes, intersection_sizes, max_cluster_size=2)
+    assert sorted(cluster) == [1, 2]
+
+    # With max_cluster_size = 3
+    # Same as above, but we take more from sorted_indices
+    # Cluster: [1, 2, 0]
+    cluster = find_next_cluster(sample_pivot_sets, union_sizes, intersection_sizes, max_cluster_size=3)
+    assert sorted(cluster) == [0, 1, 2]
+
+
+def test_find_predator_prey_success():
+    """
+    Tests a scenario where a predator should be successfully identified.
+    """
+    # sizes:     [ 1,   100,  100,  100]
+    sv_sizes = [1, 100, 100, 100]
+    # int_sizes: [[ 1, 1, 1, 1],
+    #             [ 1, 10, 2, 2],
+    #             [ 1, 2, 10, 2],
+    #             [ 1, 2, 2, 10]]
+    intersection_sizes = np.array([[1, 1, 1, 1], [1, 10, 2, 2], [1, 2, 10, 2], [1, 2, 2, 10]])
+
+    # Let's analyze row 0 (the predator, size=1) with base=0.7
+    # score(0,1) = 1 / (1 * 0.7^1) = 1.42
+    # score(0,2) = 1 / (1 * 0.7^1) = 1.42
+    # score(0,3) = 1 / (1 * 0.7^1) = 1.42
+    # All scores > 1. Let's use threshold = 1.2
+    # Row 0 scores > 1.2: [1.42, 1.42, 1.42]
+    # Row score (mean of squares): > 0
+    # Predator: 0. Prey: [1, 2, 3]
+
+    predator_idx, prey_indices = find_predator_prey(
+        sv_sizes, intersection_sizes, base=0.7, threshold=1.2, max_predator_size=2
+    )
+
+    assert predator_idx == 0
+    assert sorted(prey_indices) == [1, 2, 3]
+
+
+def test_find_predator_prey_no_good_predator():
+    """
+    Tests a scenario where no predator's scores are high enough.
+    """
+    # sizes:     [ 1,   100,  100]
+    sv_sizes = [1, 100, 100]
+    # int_sizes: [[ 1, 0, 0],
+    #             [ 0, 10, 5],
+    #             [ 0, 5, 10]]
+    intersection_sizes = np.array([[1, 0, 0], [0, 10, 5], [0, 5, 10]])
+
+    # Analyze row 0 (the predator, size=1) with base=0.7
+    # score(0,1) = 1 / (1 * 0.7^0) = 1.0
+    # score(0,2) = 1 / (1 * 0.7^0) = 1.0
+    # Scores are not > 1.2 threshold.
+    # Other rows are too large to be predators.
+    # Result: (None, None)
+
+    predator_idx, prey_indices = find_predator_prey(
+        sv_sizes, intersection_sizes, base=0.7, threshold=1.2, max_predator_size=2
+    )
+
+    assert predator_idx is None
+    assert prey_indices is None
+
+
+def test_find_predator_prey_predator_too_large():
+    """
+    Tests that a potential predator is disqualified due to max_predator_size.
+    """
+    # sizes:     [ 5,   100,  100,  100]  (Predator size 5 > 2)
+    sv_sizes = [5, 100, 100, 100]
+    # int_sizes: [[ 5, 4, 4, 4],
+    #             [ 4, 10, 2, 2],
+    #             [ 4, 2, 10, 2],
+    #             [ 4, 2, 2, 10]]
+    intersection_sizes = np.array([[5, 4, 4, 4], [4, 10, 2, 2], [4, 2, 10, 2], [4, 2, 2, 10]])
+
+    # Analyze row 0 (the predator, size=5) with base=0.7
+    # score(0,1) = 1 / (5 * 0.7^4) = 1 / (5 * 0.24) = 0.83
+    # ...scores are low anyway, but even if they were high,
+    # the predator_size_mask would set row 0's score to 0.
+
+    predator_idx, prey_indices = find_predator_prey(
+        sv_sizes, intersection_sizes, base=0.7, threshold=1.2, max_predator_size=2
+    )
+
+    assert predator_idx is None
+    assert prey_indices is None
+
+
+def test_find_predator_prey_too_few_vectors():
+    """
+    Tests that the function returns (None, None) if there are too few vectors.
+    """
+    sv_sizes = [1, 100]
+    intersection_sizes = np.array([[1, 1], [1, 10]])
+
+    predator_idx, prey_indices = find_predator_prey(sv_sizes, intersection_sizes, max_predator_size=2)
+
+    assert predator_idx is None
+    assert prey_indices is None
