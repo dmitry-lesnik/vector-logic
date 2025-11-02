@@ -43,7 +43,7 @@ def test_engine_initialization_full():
     variables = ["x", "y", "z_val"]
     rules = ["x => y", "y && z_val"]
     name = "MyTestEngine"
-    engine = Engine(variables=variables, name=name, rules=rules)
+    engine = Engine(variables=variables, name=name, rules=rules, verbose=True)
 
     expected_vars = sorted(variables)
     assert engine._variables == expected_vars
@@ -53,6 +53,7 @@ def test_engine_initialization_full():
     assert engine._variable_map["x"] == 1
     assert engine._variable_map["y"] == 2
     assert engine._variable_map["z_val"] == 3
+    assert engine._verbose
 
 
 def test_engine_handles_duplicate_variables():
@@ -401,13 +402,29 @@ def test_engine_valid_set_iterator():
         {"v2": True, "v5": True, "v1": False, "v6": False, "v7": False},
     ]
 
-    for i, row_dict in enumerate(engine.valid_set_iter()):
+    for i, row_dict in enumerate(engine.valid_set_iter_dicts()):
         assert frozenset(row_dict.items()) == frozenset(expected_dicts[i].items())
+
+
+def test_inference_result_iter_dicts():
+    """
+    Tests the iter_dicts method on an InferenceResult object.
+    """
+    engine = Engine(variables=["x1", "x2", "x3"])
+    engine.add_rule("x1 => x2")
+    engine.add_rule("x2 => x3")
+    result = engine.predict({"x1": True})
+
+    # The result of the prediction should be a single TObject: {1, 2, 3}
+    dict_list = list(result.iter_dicts())
+
+    assert len(dict_list) == 1
+    assert dict_list[0] == {"x1": True, "x2": True, "x3": True}
 
 
 def test_engine_compile_optimisation():
     """ """
-    print()
+    # print()
     variables = ["v1", "v2", "v3", "v4", "v5", "v6", "v7"]
     engine = Engine(variables=variables)
 

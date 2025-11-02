@@ -1,4 +1,5 @@
 import time
+from tabnanny import verbose
 
 import numpy as np
 
@@ -29,7 +30,7 @@ def generate_random_rule(variables_: list[str], num_vars: int, operators_: list[
     return " ".join(rule_parts)
 
 
-def generate_engine(num_rules, num_vars, random_state):
+def generate_engine(num_rules, num_vars, random_state, verbose=False):
     variables = [f"v{i + 1:02d}" for i in range(num_vars)]
     operators = ["&&", "||", "=>", "<=", "=", "^^"]
     engine = Engine(variables=variables, name="Performance Test Engine")
@@ -37,6 +38,7 @@ def generate_engine(num_rules, num_vars, random_state):
         num_rule_vars = random_state.randint(3, 5)  # 3 or 4 variables in the rule
         rule = generate_random_rule(variables, num_rule_vars, operators, random_state)
         engine.add_rule(rule)
+    engine._verbose = verbose
     return engine
 
 
@@ -50,7 +52,7 @@ def measure_compile_time(engine):
     return compile_duration, engine
 
 
-def predict_one(compile_=True):
+def predict_one(compile_=True, verbose=False):
     print()
     print(f"Running predict_one() with compile = {compile_}")
     seed = 425
@@ -61,7 +63,7 @@ def predict_one(compile_=True):
     rng.seed(seed)
 
     # generate random rules
-    engine = generate_engine(num_rules=num_rules, num_vars=num_vars, random_state=rng)
+    engine = generate_engine(num_rules=num_rules, num_vars=num_vars, random_state=rng, verbose=verbose)
 
     # generate random evidence
     variables = engine.variables
@@ -161,7 +163,7 @@ def run__compile_stats():
     print(previous_result)
 
 
-def run__compile_one(seed=42, num_rules=60, num_vars=80):
+def run__compile_one(seed=42, num_rules=60, num_vars=80, verbose=False):
     print()
     print("---  Running compile_one() ---")
     # seed = 42
@@ -175,7 +177,7 @@ def run__compile_one(seed=42, num_rules=60, num_vars=80):
     rng = np.random.RandomState()
     rng.seed(seed)
     # print(f"\nrepeat {i + 1} / {repeat}")
-    engine = generate_engine(num_rules=num_rules, num_vars=num_vars, random_state=rng)
+    engine = generate_engine(num_rules=num_rules, num_vars=num_vars, random_state=rng, verbose=verbose)
     duration, engine = measure_compile_time(engine)
     print(f"intermediate_sizes: {engine.intermediate_sizes_stats}")
     print(f"duration = {duration:.3g} ")
@@ -203,9 +205,9 @@ def run__compile_one(seed=42, num_rules=60, num_vars=80):
     print(previous_result)
 
 
-def run__to_compile_or_not_to_compile():
-    predict_one(compile_=True)
-    predict_one(compile_=False)
+def run__to_compile_or_not_to_compile(verbose=False):
+    predict_one(compile_=True, verbose=verbose)
+    predict_one(compile_=False, verbose=verbose)
     previous_result = """
     Running predict_one() with compile = True
     Compilation duration: 2.84 seconds
@@ -232,7 +234,8 @@ def run__to_compile_or_not_to_compile():
 
 
 if __name__ == "__main__":
-    # run__compile_one(seed=42)
-    # run__compile_one(seed=425)
-    run__compile_stats()
-    # run__to_compile_or_not_to_compile()
+    # run__compile_one(seed=42, verbose=True)
+    # run__compile_one(seed=425, verbose=True)
+    # run__compile_one(seed=666, num_rules=80, num_vars=90, verbose=True)
+    # run__compile_stats()
+    run__to_compile_or_not_to_compile(verbose=True)

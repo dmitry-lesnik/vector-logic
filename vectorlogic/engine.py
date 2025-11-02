@@ -7,7 +7,7 @@ the `InferenceResult` class for handling the outcomes of predictions.
 """
 
 import re
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Iterable
 
 import numpy as np
 
@@ -36,6 +36,7 @@ class InferenceResult:
     def __init__(self, state_vector: StateVector, variable_map: Dict[str, int]):
         self._state_vector = state_vector
         self._variable_map = variable_map
+        self._index_to_name = {v: k for k, v in self._variable_map.items()}
 
     @property
     def state_vector(self) -> StateVector:
@@ -129,6 +130,21 @@ class InferenceResult:
         """
         self._state_vector.print(max_index=max_index, indent=indent)
 
+    def iter_dicts(self) -> Iterable[Optional[Dict[str, bool]]]:
+        """
+        Yield a dictionary for each TObject in the StateVector.
+
+        This method provides an iterator that converts each TObject into a
+        dictionary of variable names and boolean values.
+
+        Yields
+        -------
+        Iterable[Optional[Dict[str, bool]]]
+            An iterator of dictionaries, where each dictionary represents a TObject.
+        """
+        for t_obj in self._state_vector:
+            yield t_obj.to_dict(self._index_to_name)
+
 
 class Engine:
     """
@@ -148,6 +164,8 @@ class Engine:
     rules : List[str], optional
         An optional list of initial rule strings to add upon initialization.
         Defaults to None.
+    verbose : bool, optional
+        If True, prints progress during compilation. Defaults to False.
 
     Attributes
     ----------
@@ -171,11 +189,14 @@ class Engine:
         variables: List[str],
         name: Optional[str] = None,
         rules: Optional[List[str]] = None,
+        verbose: bool = False,
     ):
         self._validate_variables(variables)
         self._variables: List[str] = sorted(list(set(variables)))
         self._name: Optional[str] = name
         self._variable_map: Dict[str, int] = {var: i + 1 for i, var in enumerate(self._variables)}
+        self._index_to_name: Dict[int, str] = {v: k for k, v in self._variable_map.items()}
+        self._verbose = verbose
 
         # --- Core State ---
         self._uncompiled_rules: List[str] = []
@@ -252,6 +273,7 @@ class Engine:
                 "mean": np.nan,
                 "rms": np.nan,
                 "max": np.nan,
+                "last": np.nan,
             }
 
         sizes_array = np.array(self._intermediate_sizes)
@@ -259,8 +281,9 @@ class Engine:
             "num_entries": len(self._intermediate_sizes),
             "min": int(np.min(sizes_array)),
             "mean": float(np.round(np.mean(sizes_array), 1)),
-            "rms": float(np.round(np.sqrt(np.mean(sizes_array**2)), 1)),
+            "rms": float(np.round(np.sqrt(np.mean(sizes_array ** 2)), 1)),
             "max": int(np.max(sizes_array)),
+            "last": int(self._intermediate_sizes[-1]),
         }
 
     @property
@@ -297,7 +320,7 @@ class Engine:
             raise AttributeError("The 'valid_set' is not available. Call .compile() to build it.")
         return self._valid_set
 
-    def valid_set_iter(self):
+    def valid_set_iter_dicts(self):
         """
         Iterates through the valid rows of the compiled knowledge base.
 
@@ -320,8 +343,8 @@ class Engine:
         """
         # Accessing self.valid_set will automatically check for compilation
         # and raise an AttributeError if not compiled.
-        # The inverse map is created on the fly for iter_dicts.
-        yield from self.valid_set.iter_dicts(self._variable_map)
+        for t_obj in self.valid_set:
+            yield t_obj.to_dict(self._index_to_name)
 
     def add_rule(self, rule_string: str):
         """
@@ -423,11 +446,16 @@ class Engine:
         if self._valid_set is not None:
             all_svs.append(self._valid_set)
 
+        if self._verbose:
+            print(f"Engine.compile(): Compiling {len(all_svs)} state vectors...")
+
         def _finalize_compilation():
             self._is_compiled = True
             self._compiled_rules.extend(self._uncompiled_rules)
             self._uncompiled_rules.clear()
             self._state_vectors.clear()
+            if self._verbose:
+                print(f"\rEngine.compile(): Compilation finished. Final size = {self._valid_set.size()}")
 
         if not all_svs:
             self._valid_set = StateVector([TObject()])
@@ -435,7 +463,7 @@ class Engine:
             _finalize_compilation()
             return
 
-        valid_set, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config)
+        valid_set, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config, verbose=self._verbose)
         self._valid_set = valid_set.simplify()
         self._intermediate_sizes.extend(int_sizes)
         _finalize_compilation()
@@ -476,7 +504,13 @@ class Engine:
             all_svs.append(self._valid_set)
         all_svs.append(evidence_sv)
 
-        result_sv, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config)
+        if self._verbose:
+            print(f"Engine.predict(): Compiling {len(all_svs)} state vectors...")
+
+        result_sv, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config, verbose=self._verbose)
+        if self._verbose:
+            print(f"\rEngine.predict(): Compilation finished. Final size = {result_sv.size()}")
+
         self._intermediate_sizes = int_sizes
         return InferenceResult(result_sv, self._variable_map)
 
@@ -666,7 +700,9 @@ class Engine:
         return False, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes
 
     @staticmethod
-    def multiply_all_vectors(state_vectors: List[StateVector], opt_config: dict) -> Tuple[StateVector, List[int]]:
+    def multiply_all_vectors(
+        state_vectors: List[StateVector], opt_config: dict, verbose: bool = False
+    ) -> Tuple[StateVector, List[int]]:
         """
         Multiplies a list of StateVectors using an optimized clustering strategy.
 
@@ -676,6 +712,8 @@ class Engine:
             The list of StateVectors to multiply.
         opt_config : dict
             A dictionary of optimization hyper-parameters.
+        verbose : bool, optional
+            If True, prints progress during multiplication. Defaults to False.
 
         Returns
         -------
@@ -730,6 +768,14 @@ class Engine:
             if len(remaining_svs) == 2:
                 break  # Let main clustering loop handle the final simple multiplication
 
+            if verbose > 0:
+                max_sv_size = max([sv.size() for sv in remaining_svs])
+                num_left = len(remaining_svs)
+                print(
+                    f"\r  - Searching for predator; {num_left} vectors left, max size: {max_sv_size}... ",
+                    end="                  ",
+                )
+
             # --- Predator-Prey Heuristic ---
             sv0_idx, prey_indices = helpers.find_predator_prey(
                 sv_sizes,
@@ -782,6 +828,11 @@ class Engine:
 
         # ======  JACCARD SIMILARITY CLUSTERING ==========
         while len(remaining_svs) > 1:
+            if verbose > 0:
+                max_sv_size = max([sv.size() for sv in remaining_svs])
+                num_left = len(remaining_svs)
+                print(f"\r  - Multiplying {num_left} vectors, max size: {max_sv_size}... ", end="                  ")
+                # print(f"  - Multiplying {num_left} vectors, max size: {max_sv_size}... ")
 
             if len(remaining_svs) == 2:
                 # ------- nothing to optimise -------------

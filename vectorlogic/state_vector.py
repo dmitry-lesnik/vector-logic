@@ -406,7 +406,7 @@ class StateVector:
               is unconstrained in any TObject.
 
         Raises
-        ------
+        -------
         ValueError
             If called on a contradictory (empty) StateVector.
         """
@@ -481,6 +481,14 @@ class StateVector:
         index_to_name = {v: k for k, v in variable_map.items()}
         for t_obj in self._t_objects:
             yield t_obj.to_dict(index_to_name)
+
+    def __iter__(self):
+        """Allows iterating through the TObjects in the StateVector."""
+        return iter(self._t_objects)
+
+    def __getitem__(self, index):
+        """Allows accessing TObjects by index."""
+        return self._t_objects[index]
 
     def print(self, max_index: Optional[int] = None, indent: int = 0, print_brackets: bool = True):
         """
