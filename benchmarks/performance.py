@@ -1,5 +1,4 @@
 import time
-from tabnanny import verbose
 
 import numpy as np
 
@@ -185,15 +184,22 @@ def run__compile_one(seed=42, num_rules=60, num_vars=80, verbose=False):
     seed = 42
     num_rules = 60
     num_vars = 80
-    intermediate_sizes: {'num_entries': 59, 'min': 2, 'mean': 361.6, 'rms': 1392.6, 'max': 7232}
-    duration = 1.73 
+    intermediate_sizes: {'num_entries': 124, 'min': 1, 'mean': 285.3, 'rms': 1342.3, 'max': 8864, 'last': 7644}
+    duration = 1.7 
     
     ---------------------
     seed = 425
     num_rules = 60
     num_vars = 80
-    intermediate_sizes: {'num_entries': 59, 'min': 1, 'mean': 1463.8, 'rms': 4669.5, 'max': 21312}
-    duration = 3.47 
+    intermediate_sizes: {'num_entries': 73, 'min': 1, 'mean': 650.8, 'rms': 2785.0, 'max': 17608, 'last': 13560}
+    duration = 2.94 
+    
+    ---------------------
+    seed = 666
+    num_rules = 80
+    num_vars = 90
+    intermediate_sizes: {'num_entries': 169, 'min': 1, 'mean': 449.1, 'rms': 2962.3, 'max': 32544, 'last': 1604}
+    duration = 12.2 
     """
     previous_result = f"""
     [{_my_spec_}]
@@ -210,18 +216,18 @@ def run__to_compile_or_not_to_compile(verbose=False):
     predict_one(compile_=False, verbose=verbose)
     previous_result = """
     Running predict_one() with compile = True
-    Compilation duration: 2.84 seconds
-    intermediate_sizes: {'num_entries': 79, 'min': 1, 'mean': 601.8, 'rms': 2677.1, 'max': 17608}
+    Compilation duration: 2.9 seconds
+    intermediate_sizes: {'num_entries': 73, 'min': 1, 'mean': 650.8, 'rms': 2785.0, 'max': 17608, 'last': 13560}
     Size of output: 1296
-    Prediction duration: 0.0309 seconds
-    Overall time: 2.87 seconds
-    intermediate_sizes: {'num_entries': 1, 'min': 1296, 'mean': 1296.0, 'rms': 1296.0, 'max': 1296}
+    Prediction duration: 0.0313 seconds
+    Overall time: 2.93 seconds
+    intermediate_sizes: {'num_entries': 1, 'min': 1296, 'mean': 1296.0, 'rms': 1296.0, 'max': 1296, 'last': 1296}
     
     Running predict_one() with compile = False
     Size of output: 1728
-    Prediction duration: 0.342 seconds
-    Overall time: 0.342 seconds
-    intermediate_sizes: {'num_entries': 898, 'min': 1, 'mean': 8.4, 'rms': 67.1, 'max': 1728}
+    Prediction duration: 0.13 seconds
+    Overall time: 0.13 seconds
+    intermediate_sizes: {'num_entries': 234, 'min': 1, 'mean': 27.1, 'rms': 168.6, 'max': 1728, 'last': 1728}
     
     """
     previous_result = f"""
@@ -235,7 +241,7 @@ def run__to_compile_or_not_to_compile(verbose=False):
 
 if __name__ == "__main__":
     # run__compile_one(seed=42, verbose=True)
-    # run__compile_one(seed=425, verbose=True)
-    # run__compile_one(seed=666, num_rules=80, num_vars=90, verbose=True)
+    # run__compile_one(seed=425, verbose=False)
+    run__compile_one(seed=666, num_rules=80, num_vars=90, verbose=True)
     # run__compile_stats()
-    run__to_compile_or_not_to_compile(verbose=True)
+    # run__to_compile_or_not_to_compile(verbose=False)
