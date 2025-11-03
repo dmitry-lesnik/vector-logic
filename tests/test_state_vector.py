@@ -427,3 +427,29 @@ def test_iter_dicts_empty_state_vector(variable_map):
     sv = StateVector()  # An empty state vector
     result_dicts = list(sv.iter_dicts(variable_map))
     assert result_dicts == []
+
+
+def test_state_vector_iteration_and_indexing():
+    """
+    Tests that the StateVector can be iterated over and accessed by index.
+    """
+    t1 = TObject(ones={1})
+    t2 = TObject(zeros={2})
+    t3 = TObject(ones={3})
+    sv = StateVector([t1, t2, t3])
+
+    # Test iteration
+    t_objects_from_iter = [t for t in sv]
+    assert t_objects_from_iter == [t1, t2, t3]
+
+    # Test access by index
+    assert sv[0] == t1
+    assert sv[1] == t2
+    assert sv[2] == t3
+
+    # Test negative indexing
+    assert sv[-1] == t3
+
+    # Test that it raises an IndexError for out-of-bounds access
+    with pytest.raises(IndexError):
+        _ = sv[3]

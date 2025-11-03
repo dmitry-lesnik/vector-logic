@@ -122,9 +122,9 @@ def test_update_ps_unions_intersections_no_remaining():
     updated_unions, updated_intersections = update_ps_unions_intersections(
         initial_unions, initial_intersections, [1, 0], [new_pivot_set]
     )
-    print()
-    print(updated_unions)
-    print(updated_intersections)
+    # print()
+    # print(updated_unions)
+    # print(updated_intersections)
     # The function should produce 1x1 matrices for the single remaining set
     np.testing.assert_array_equal(updated_unions, np.array([[3]]))
     np.testing.assert_array_equal(updated_intersections, np.array([[3]]))

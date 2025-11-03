@@ -7,7 +7,7 @@ the `InferenceResult` class for handling the outcomes of predictions.
 """
 
 import re
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Iterable
 
 import numpy as np
 
@@ -36,6 +36,7 @@ class InferenceResult:
     def __init__(self, state_vector: StateVector, variable_map: Dict[str, int]):
         self._state_vector = state_vector
         self._variable_map = variable_map
+        self._index_to_name = {v: k for k, v in self._variable_map.items()}
 
     @property
     def state_vector(self) -> StateVector:
@@ -129,6 +130,21 @@ class InferenceResult:
         """
         self._state_vector.print(max_index=max_index, indent=indent)
 
+    def iter_dicts(self) -> Iterable[Optional[Dict[str, bool]]]:
+        """
+        Yield a dictionary for each TObject in the StateVector.
+
+        This method provides an iterator that converts each TObject into a
+        dictionary of variable names and boolean values.
+
+        Yields
+        -------
+        Iterable[Optional[Dict[str, bool]]]
+            An iterator of dictionaries, where each dictionary represents a TObject.
+        """
+        for t_obj in self._state_vector:
+            yield t_obj.to_dict(self._index_to_name)
+
 
 class Engine:
     """
@@ -148,6 +164,8 @@ class Engine:
     rules : List[str], optional
         An optional list of initial rule strings to add upon initialization.
         Defaults to None.
+    verbose : int, optional
+        Verbosity level (0 for silent). Defaults to 0.
 
     Attributes
     ----------
@@ -171,11 +189,18 @@ class Engine:
         variables: List[str],
         name: Optional[str] = None,
         rules: Optional[List[str]] = None,
+        verbose: int = 0,
     ):
         self._validate_variables(variables)
         self._variables: List[str] = sorted(list(set(variables)))
         self._name: Optional[str] = name
         self._variable_map: Dict[str, int] = {var: i + 1 for i, var in enumerate(self._variables)}
+        self._index_to_name: Dict[int, str] = {v: k for k, v in self._variable_map.items()}
+        self._verbose = verbose
+
+        if self._verbose > 0:
+            engine_name = f"'{self._name}' " if self._name else ""
+            print(f"Engine {engine_name}initialized with {len(self._variables)} variables.")
 
         # --- Core State ---
         self._uncompiled_rules: List[str] = []
@@ -187,7 +212,7 @@ class Engine:
         self._compiled_rules: List[str] = []
         self._intermediate_sizes: List[int] = []
 
-        # --- Optimization Hyper-parameters ---
+        # --- Optimisation Hyper-parameters ---
         # (Advanced users can tune these on the instance)
         self._opt_predator_base: float = 0.6
         self._opt_predator_threshold: float = 1.2
@@ -252,6 +277,7 @@ class Engine:
                 "mean": np.nan,
                 "rms": np.nan,
                 "max": np.nan,
+                "last": np.nan,
             }
 
         sizes_array = np.array(self._intermediate_sizes)
@@ -261,11 +287,12 @@ class Engine:
             "mean": float(np.round(np.mean(sizes_array), 1)),
             "rms": float(np.round(np.sqrt(np.mean(sizes_array**2)), 1)),
             "max": int(np.max(sizes_array)),
+            "last": int(self._intermediate_sizes[-1]),
         }
 
     @property
     def opt_config(self) -> Dict[str, Union[float, int]]:
-        """Returns a dictionary of the current optimization hyper-parameters."""
+        """Returns a dictionary of the current optimisation hyper-parameters."""
         return {
             "predator_base": self._opt_predator_base,
             "predator_threshold": self._opt_predator_threshold,
@@ -297,7 +324,7 @@ class Engine:
             raise AttributeError("The 'valid_set' is not available. Call .compile() to build it.")
         return self._valid_set
 
-    def valid_set_iter(self):
+    def valid_set_iter_dicts(self):
         """
         Iterates through the valid rows of the compiled knowledge base.
 
@@ -320,8 +347,8 @@ class Engine:
         """
         # Accessing self.valid_set will automatically check for compilation
         # and raise an AttributeError if not compiled.
-        # The inverse map is created on the fly for iter_dicts.
-        yield from self.valid_set.iter_dicts(self._variable_map)
+        for t_obj in self.valid_set:
+            yield t_obj.to_dict(self._index_to_name)
 
     def add_rule(self, rule_string: str):
         """
@@ -362,6 +389,8 @@ class Engine:
         >>> engine.add_rule("take_umbrella = (it_will_rain || has_forecast)")
         >>> engine.add_rule("!wind_is_strong")
         """
+        if self._verbose > 0:
+            print(f'Adding rule: "{rule_string}"')
         self._uncompiled_rules.append(rule_string)
         converter = RuleConverter(self._variable_map)
         state_vector = converter.convert(rule_string)
@@ -385,6 +414,8 @@ class Engine:
         evidence : Dict[str, bool]
             A dictionary of variable names and their boolean values.
         """
+        if self._verbose > 0:
+            print(f"Adding evidence: {evidence}")
         ones = {self._variable_map[var] for var, val in evidence.items() if val}
         zeros = {self._variable_map[var] for var, val in evidence.items() if not val}
         t_object = TObject(ones=ones, zeros=zeros)
@@ -403,6 +434,8 @@ class Engine:
         state_vector : StateVector
             A StateVector to add.
         """
+        if self._verbose > 0:
+            print(f"Adding custom StateVector of size {state_vector.size()}")
         self._uncompiled_rules.append("custom state vector")
         self._state_vectors.append(state_vector)
         self._is_compiled = False
@@ -417,17 +450,24 @@ class Engine:
         user-driven action.
         """
         if self._is_compiled:
+            if self._verbose > 0:
+                print("Engine.compile(): Engine already compiled.")
             return
 
         all_svs = self._state_vectors
         if self._valid_set is not None:
             all_svs.append(self._valid_set)
 
+        if self._verbose > 0:
+            print(f"Engine.compile(): Compiling {len(all_svs)} state vectors...")
+
         def _finalize_compilation():
             self._is_compiled = True
             self._compiled_rules.extend(self._uncompiled_rules)
             self._uncompiled_rules.clear()
             self._state_vectors.clear()
+            if self._verbose > 0:
+                print(f"Engine.compile(): Compilation finished. Final size = {self._valid_set.size()}")
 
         if not all_svs:
             self._valid_set = StateVector([TObject()])
@@ -435,7 +475,7 @@ class Engine:
             _finalize_compilation()
             return
 
-        valid_set, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config)
+        valid_set, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config, verbose=self._verbose)
         self._valid_set = valid_set.simplify()
         self._intermediate_sizes.extend(int_sizes)
         _finalize_compilation()
@@ -476,7 +516,15 @@ class Engine:
             all_svs.append(self._valid_set)
         all_svs.append(evidence_sv)
 
-        result_sv, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config)
+        if self._verbose == 1:
+            print(f"Engine.predict(): Num state vectors = {len(all_svs)}")
+        elif self._verbose > 1:
+            print(f"Engine.predict(): Num state vectors = {len(all_svs)}, Evidence: {evidence}")
+
+        result_sv, int_sizes = self.multiply_all_vectors(all_svs, self.opt_config, verbose=self._verbose)
+        if self._verbose > 0:
+            print(f"Engine.predict(): Multiplication finished. Final state vector size = {result_sv.size()}")
+
         self._intermediate_sizes = int_sizes
         return InferenceResult(result_sv, self._variable_map)
 
@@ -562,7 +610,7 @@ class Engine:
         print(f"Variable Map: {inverse_map}")
         max_index = len(self._variables)
 
-        if debug_info:
+        if self._verbose >= 2 or debug_info:
             print(f"\n--- Compiled Rules [{len(self._compiled_rules)}] ---")
             for i, rule in enumerate(self._compiled_rules):
                 print(f"{i + 1}.  {rule}")
@@ -578,9 +626,8 @@ class Engine:
         else:
             print("    (Empty)")
 
-        if debug_info:
+        if self._verbose >= 2 or debug_info:
             print("\n--- State Vector sizes evolution during compilation:")
-            # print(f"    {self._intermediate_sizes}")
             if self._intermediate_sizes:
                 print(f"    {self.intermediate_sizes_stats}")
             else:
@@ -666,16 +713,20 @@ class Engine:
         return False, remaining_svs, pivot_sets, sv_sizes, union_sizes, intersection_sizes
 
     @staticmethod
-    def multiply_all_vectors(state_vectors: List[StateVector], opt_config: dict) -> Tuple[StateVector, List[int]]:
+    def multiply_all_vectors(
+        state_vectors: List[StateVector], opt_config: dict, verbose: int = 0
+    ) -> Tuple[StateVector, List[int]]:
         """
-        Multiplies a list of StateVectors using an optimized clustering strategy.
+        Multiplies a list of StateVectors using an optimised clustering strategy.
 
         Parameters
         ----------
         state_vectors : List[StateVector]
             The list of StateVectors to multiply.
         opt_config : dict
-            A dictionary of optimization hyper-parameters.
+            A dictionary of optimisation hyper-parameters.
+        verbose : int, optional
+            Verbosity level (0 for silent). Defaults to 0.
 
         Returns
         -------
@@ -691,7 +742,7 @@ class Engine:
         2. If no suitable predator is found, it falls back to a clustering
            strategy based on Jaccard similarity of pivot sets.
         """
-        # --- Unpack optimization parameters ---
+        # --- Unpack optimisation parameters ---
         predator_base = opt_config.get("predator_base", 0.6)
         predator_threshold = opt_config.get("predator_threshold", 1.2)
         max_predator_size = opt_config.get("max_predator_size", 2)
@@ -716,11 +767,18 @@ class Engine:
             product_sv = remaining_svs[0] * remaining_svs[1]
             return product_sv, [product_sv.size()]
 
+        erase_line = False
+
+        def _finalise():
+            if erase_line:
+                print(f"\r{' ' * 120}\r", end="")
+
         intermediate_sizes = []
         pivot_sets = [sv.pivot_set() for sv in remaining_svs]
         sv_sizes = [sv.size() for sv in remaining_svs]  # sizes of state vectors
         union_sizes, intersection_sizes = helpers.calc_ps_unions_intersections(pivot_sets)
 
+        # ===== PREDATOR-PREY HEURISTIC ==============
         max_num_predator_prey_loops = (np.array(sv_sizes) <= max_predator_size).sum()
         counter = 0
         while len(remaining_svs) > 1:
@@ -730,7 +788,6 @@ class Engine:
             if len(remaining_svs) == 2:
                 break  # Let main clustering loop handle the final simple multiplication
 
-            # --- Predator-Prey Heuristic ---
             sv0_idx, prey_indices = helpers.find_predator_prey(
                 sv_sizes,
                 intersection_sizes,
@@ -740,6 +797,12 @@ class Engine:
             )
             if sv0_idx is None:
                 break  # No predator found, move to clustering
+
+            if verbose > 1:
+                p_size = sv_sizes[sv0_idx]
+                n_prey = len(prey_indices)
+                print(f"\r  - Predator found (size {p_size}), attacking {n_prey} prey... ", end=" " * 30)
+                erase_line = True
 
             predator_sv = remaining_svs[sv0_idx]
             new_products = []
@@ -773,6 +836,7 @@ class Engine:
             )
 
             if is_finished:
+                _finalise()
                 return remaining_svs[0], intermediate_sizes
 
             if not deltas or sum(deltas) <= 0:
@@ -782,11 +846,15 @@ class Engine:
 
         # ======  JACCARD SIMILARITY CLUSTERING ==========
         while len(remaining_svs) > 1:
+            if verbose > 1:
+                max_sv_size = max([sv.size() for sv in remaining_svs])
+                num_left = len(remaining_svs)
+                print(f"\r  - Multiplying {num_left} vectors, max size: {max_sv_size}... ", end=" " * 30)
 
             if len(remaining_svs) == 2:
-                # ------- nothing to optimise -------------
                 product_sv = remaining_svs[0] * remaining_svs[1]
                 intermediate_sizes.append(product_sv.size())
+                _finalise()
                 return product_sv, intermediate_sizes
 
             cluster_indices = helpers.find_next_cluster(pivot_sets, union_sizes, intersection_sizes, max_cluster_size)
@@ -797,6 +865,7 @@ class Engine:
                 product_sv *= remaining_svs[i]
                 intermediate_sizes.append(product_sv.size())
                 if product_sv.is_contradiction():
+                    _finalise()
                     return StateVector(), intermediate_sizes
 
             # ---- Update the state using the helper method ----
@@ -813,6 +882,7 @@ class Engine:
             )
 
             if is_finished:
+                _finalise()
                 return remaining_svs[0], intermediate_sizes
-
+        _finalise()
         return remaining_svs[0], intermediate_sizes

@@ -41,13 +41,14 @@ There is a minimal example of defining rules and making a prediction.
 from vectorlogic import Engine
 
 # 1. Define the variables for your system
-variables = ["sky_is_grey", "humidity_is_high", "it_will_rain"]
+variables = ["sky_is_grey", "humidity_is_high", "it_will_rain", "take_umbrella"]
 
 # 2. Create an Engine instance
 engine = Engine(variables=variables)
 
 # 3. Add your logical rules
 engine.add_rule("sky_is_grey && humidity_is_high => it_will_rain")
+engine.add_rule("it_will_rain => take_umbrella")
 
 # 4. Make a prediction based on new evidence
 evidence = {"sky_is_grey": True, "humidity_is_high": True}
@@ -55,10 +56,10 @@ result = engine.predict(evidence)
 
 # 5. Check the result
 if result:
-    rain_prediction = result.get_value("it_will_rain")
-    print(f"Will it rain? Prediction: {rain_prediction == 1}")
+    take_umbrella = result.get_value("take_umbrella")
+    print(f"Should I take an umbrella? Prediction: {bool(take_umbrella)}")
 
-# Expected Output: Will it rain? Prediction: True
+# Should I take an umbrella? Prediction: True
 ```
 
 ## Detailed Example
@@ -162,8 +163,12 @@ To run the test suite, use pytest through Poetry:
 
 ## Further Reading & Theoretical Foundations
 
-The `vector-logic` library is a practical implementation of an algebraic approach to propositional logic called **State Algebra**. If you're interested in the concepts behind the engine, these resources provide a great starting point:
+The `vector-logic` library is a practical implementation of an algebraic approach to propositional logic called **State
+Algebra**. If you're interested in the concepts behind the engine, these resources provide a great starting point:
 
-*   [**Building a Rules Engine from First Principles**](https://towardsdatascience.com/building-a-rules-engine-from-first-principles/): A high-level, practical explanation of the main building blocks of State Algebra. This TDS article is the best place to start for understanding the core ideas.
+* **Building a Rules Engine from First Principles**: A high-level, practical
+  explanation of the main building blocks of State Algebra. This TDS article is the best place to start for
+  understanding the core ideas: https://towardsdatascience.com/building-a-rules-engine-from-first-principles/
 
-*   **State Algebra for Propositional Logic**: For those who want a more formal and rigorous treatment, this paper on arXiv offers a deep, theoretical dive into the mathematics of State Algebra: https://arxiv.org/abs/2509.10326
+* **State Algebra for Propositional Logic**: For those who want a more formal and rigorous treatment, this paper on
+  arXiv offers a deep, theoretical dive into the mathematics of State Algebra: https://arxiv.org/abs/2509.10326

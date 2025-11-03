@@ -17,7 +17,7 @@ def generate_random_rule(variables_: list[str], num_vars: int, operators_: list[
     # Build a simple chained rule, e.g., v1 op v2 op v3 ...
     rule_parts = [maybe_negate(rule_vars[0])]
     for i in range(1, num_vars):
-        op = random_state.choice(operators_)
+        op = str(random_state.choice(operators_))
         var_part = maybe_negate(rule_vars[i])
         # Add parentheses randomly to create more complex ASTs
         rule_parts.extend([op, var_part])
@@ -29,7 +29,7 @@ def generate_random_rule(variables_: list[str], num_vars: int, operators_: list[
     return " ".join(rule_parts)
 
 
-def generate_engine(num_rules, num_vars, random_state):
+def generate_engine(num_rules, num_vars, random_state, verbose=0):
     variables = [f"v{i + 1:02d}" for i in range(num_vars)]
     operators = ["&&", "||", "=>", "<=", "=", "^^"]
     engine = Engine(variables=variables, name="Performance Test Engine")
@@ -37,6 +37,7 @@ def generate_engine(num_rules, num_vars, random_state):
         num_rule_vars = random_state.randint(3, 5)  # 3 or 4 variables in the rule
         rule = generate_random_rule(variables, num_rule_vars, operators, random_state)
         engine.add_rule(rule)
+    engine._verbose = verbose
     return engine
 
 
@@ -50,7 +51,7 @@ def measure_compile_time(engine):
     return compile_duration, engine
 
 
-def predict_one(compile_=True):
+def predict_one(compile_=True, verbose=0):
     print()
     print(f"Running predict_one() with compile = {compile_}")
     seed = 425
@@ -61,14 +62,14 @@ def predict_one(compile_=True):
     rng.seed(seed)
 
     # generate random rules
-    engine = generate_engine(num_rules=num_rules, num_vars=num_vars, random_state=rng)
+    engine = generate_engine(num_rules=num_rules, num_vars=num_vars, random_state=rng, verbose=verbose)
 
     # generate random evidence
     variables = engine.variables
     evidence = {}
     selected_vars = rng.choice(variables, num_evidence, replace=False)
     for var in selected_vars:
-        evidence[var] = rng.choice([True, False])
+        evidence[str(var)] = bool(rng.choice([True, False]))
 
     start_time = time.perf_counter()
 
@@ -161,7 +162,7 @@ def run__compile_stats():
     print(previous_result)
 
 
-def run__compile_one(seed=42, num_rules=60, num_vars=80):
+def run__compile_one(seed=42, num_rules=60, num_vars=80, verbose=0):
     print()
     print("---  Running compile_one() ---")
     # seed = 42
@@ -175,7 +176,7 @@ def run__compile_one(seed=42, num_rules=60, num_vars=80):
     rng = np.random.RandomState()
     rng.seed(seed)
     # print(f"\nrepeat {i + 1} / {repeat}")
-    engine = generate_engine(num_rules=num_rules, num_vars=num_vars, random_state=rng)
+    engine = generate_engine(num_rules=num_rules, num_vars=num_vars, random_state=rng, verbose=verbose)
     duration, engine = measure_compile_time(engine)
     print(f"intermediate_sizes: {engine.intermediate_sizes_stats}")
     print(f"duration = {duration:.3g} ")
@@ -183,15 +184,22 @@ def run__compile_one(seed=42, num_rules=60, num_vars=80):
     seed = 42
     num_rules = 60
     num_vars = 80
-    intermediate_sizes: {'num_entries': 59, 'min': 2, 'mean': 361.6, 'rms': 1392.6, 'max': 7232}
-    duration = 1.73 
+    intermediate_sizes: {'num_entries': 124, 'min': 1, 'mean': 285.3, 'rms': 1342.3, 'max': 8864, 'last': 7644}
+    duration = 1.7 
     
     ---------------------
     seed = 425
     num_rules = 60
     num_vars = 80
-    intermediate_sizes: {'num_entries': 59, 'min': 1, 'mean': 1463.8, 'rms': 4669.5, 'max': 21312}
-    duration = 3.47 
+    intermediate_sizes: {'num_entries': 73, 'min': 1, 'mean': 650.8, 'rms': 2785.0, 'max': 17608, 'last': 13560}
+    duration = 2.94 
+    
+    ---------------------
+    seed = 666
+    num_rules = 80
+    num_vars = 90
+    intermediate_sizes: {'num_entries': 169, 'min': 1, 'mean': 449.1, 'rms': 2962.3, 'max': 32544, 'last': 1604}
+    duration = 12.2 
     """
     previous_result = f"""
     [{_my_spec_}]
@@ -203,23 +211,23 @@ def run__compile_one(seed=42, num_rules=60, num_vars=80):
     print(previous_result)
 
 
-def run__to_compile_or_not_to_compile():
-    predict_one(compile_=True)
-    predict_one(compile_=False)
+def run__to_compile_or_not_to_compile(verbose=0):
+    predict_one(compile_=True, verbose=verbose)
+    predict_one(compile_=False, verbose=verbose)
     previous_result = """
     Running predict_one() with compile = True
-    Compilation duration: 2.84 seconds
-    intermediate_sizes: {'num_entries': 79, 'min': 1, 'mean': 601.8, 'rms': 2677.1, 'max': 17608}
+    Compilation duration: 2.9 seconds
+    intermediate_sizes: {'num_entries': 73, 'min': 1, 'mean': 650.8, 'rms': 2785.0, 'max': 17608, 'last': 13560}
     Size of output: 1296
-    Prediction duration: 0.0309 seconds
-    Overall time: 2.87 seconds
-    intermediate_sizes: {'num_entries': 1, 'min': 1296, 'mean': 1296.0, 'rms': 1296.0, 'max': 1296}
+    Prediction duration: 0.0313 seconds
+    Overall time: 2.93 seconds
+    intermediate_sizes: {'num_entries': 1, 'min': 1296, 'mean': 1296.0, 'rms': 1296.0, 'max': 1296, 'last': 1296}
     
     Running predict_one() with compile = False
     Size of output: 1728
-    Prediction duration: 0.342 seconds
-    Overall time: 0.342 seconds
-    intermediate_sizes: {'num_entries': 898, 'min': 1, 'mean': 8.4, 'rms': 67.1, 'max': 1728}
+    Prediction duration: 0.13 seconds
+    Overall time: 0.13 seconds
+    intermediate_sizes: {'num_entries': 234, 'min': 1, 'mean': 27.1, 'rms': 168.6, 'max': 1728, 'last': 1728}
     
     """
     previous_result = f"""
@@ -232,7 +240,8 @@ def run__to_compile_or_not_to_compile():
 
 
 if __name__ == "__main__":
-    # run__compile_one(seed=42)
-    # run__compile_one(seed=425)
-    run__compile_stats()
-    # run__to_compile_or_not_to_compile()
+    # run__compile_one(seed=42, verbose=2)
+    # run__compile_one(seed=425, verbose=2)
+    # run__compile_one(seed=666, num_rules=80, num_vars=90, verbose=2)
+    # run__compile_stats()
+    run__to_compile_or_not_to_compile(verbose=2)
