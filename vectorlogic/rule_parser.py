@@ -13,7 +13,7 @@ from typing import Dict, Any
 import pyparsing as pp
 from pyparsing import infixNotation, opAssoc
 
-# --- PERFORMANCE OPTIMIZATION ---
+# --- PERFORMANCE OPTIMISATION ---
 # Enable Packrat Caching globally for pyparsing. This significantly speeds up
 # parsing of complex grammars by memoizing parsing results.
 pp.ParserElement.enablePackrat()

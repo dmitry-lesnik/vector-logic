@@ -1,6 +1,6 @@
 """
 An example that replicates the "Importation-Exportation" logical inference
-proof from Appendix A of the State Algebra paper.
+proof from Appendix A of the State Algebra paper (https://arxiv.org/abs/2509.10326).
 """
 
 # To run this example from the root of the project, you might need to
@@ -27,7 +27,7 @@ def importation_exportation_proof():
     variables = [f"E{i}" for i in range(1, 9)]
 
     # 2. Create the Engine instance.
-    engine = Engine(variables=variables, name="Logic Proof Engine")
+    engine = Engine(variables=variables, name="Logic Proof Engine", verbose=1)
 
     # 3. Add the definitions of the supplementary variables as rules.
     print("\n[Step 1] Adding definitions for supplementary variables...")
@@ -69,13 +69,15 @@ def importation_exportation_proof():
     if e8_value == 1:
         print("\nConclusion: E8 is identically True. The proposition (E5 => E7) is a tautology.")
         print("This proves that (E1 -> (E2 -> E3)) implies ((E1 && E2) -> E3).")
+        print("✅ (expected result)")
     else:
         print("\n!!!  Aaaaaaa: E8 is not identically True. The proof has failed.")
+        print("🚫 (something went wrong)")
     print("--------------------------")
 
     # We can also check the stronger claim from the paper: are E5 and E7 equivalent?
     print("\n[Step 5] Checking for equivalence (E5 = E7)...")
-    equivalence_engine = Engine(variables=variables)
+    equivalence_engine = Engine(variables=variables, verbose=1)
     equivalence_engine.add_rule("E5 = (E1 => (E2 => E3))")
     equivalence_engine.add_rule("E7 = ((E1 && E2) => E3)")
     # Add the equivalence check
@@ -85,8 +87,10 @@ def importation_exportation_proof():
 
     if e8_equivalence_value == 1:
         print("\nThe value of E8 for (E5 = E7) is 1. This confirms they are logically equivalent.")
+        print("✅ (expected result)")
     else:
         print("\n!!!  The value of E8 for (E5 = E7) is not 1. They are not equivalent.")
+        print("🚫 (something went wrong)")
     print("--------------------------")
 
     # We can also test a prediction that should result in a contradiction
@@ -99,6 +103,9 @@ def importation_exportation_proof():
 
     if prediction_result.is_contradiction():
         print("Prediction resulted in a contradiction, as expected.")
+        print("✅ (expected result)")
+    else:
+        print("🚫 (something went wrong)")
 
 
 if __name__ == "__main__":

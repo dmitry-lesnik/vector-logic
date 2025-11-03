@@ -38,12 +38,12 @@ def test_engine_initialization_minimal():
     assert engine._variable_map == {"_start": 1, "a": 2, "b": 3, "c": 4, "var_1": 5}
 
 
-def test_engine_initialization_full():
+def test_engine_initialization_full(capsys):
     """Tests the full initialization of the Engine class with all optional arguments."""
     variables = ["x", "y", "z_val"]
     rules = ["x => y", "y && z_val"]
     name = "MyTestEngine"
-    engine = Engine(variables=variables, name=name, rules=rules, verbose=True)
+    engine = Engine(variables=variables, name=name, rules=rules, verbose=1)
 
     expected_vars = sorted(variables)
     assert engine._variables == expected_vars
@@ -54,6 +54,7 @@ def test_engine_initialization_full():
     assert engine._variable_map["y"] == 2
     assert engine._variable_map["z_val"] == 3
     assert engine._verbose
+    capsys.readouterr()
 
 
 def test_engine_handles_duplicate_variables():

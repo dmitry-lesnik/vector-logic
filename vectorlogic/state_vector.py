@@ -197,7 +197,7 @@ class StateVector:
 
     def _adjacency_reduction(self, max_num_iter: Optional[int] = 1) -> Tuple["StateVector", bool]:
         """
-        Perform an optimized adjacency reduction.
+        Perform an optimised adjacency reduction.
 
         This method combines adjacent TObjects using the rule `(A & B) | (A & !B) = A`.
         For example, `(1, 0, -)` and `(1, 1, -)` can be reduced to `(1, -, -)`.

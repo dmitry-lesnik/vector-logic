@@ -13,7 +13,7 @@ from vectorlogic import Engine
 # 1. Pre-compiling the Knowledge Base (`engine.compile()`):
 #
 #    - What it does: Multiplies all added rules together to create a single,
-#      optimized StateVector called the "valid set".
+#      optimised StateVector called the "valid set".
 #    - When to use it: When you need to run multiple predictions against the
 #      same set of rules.
 #    - Trade-off: The initial compilation can be slow if the valid set is
@@ -35,7 +35,7 @@ from vectorlogic import Engine
 variables = ["x1", "x2", "x3", "x4"]
 
 # 2. Create an Engine instance
-engine = Engine(variables=variables, name="My Simple Rules Engine")
+engine = Engine(variables=variables, name="My Simple Rules Engine", verbose=1)
 
 # 3. Add your logical rules and initial evidence
 engine.add_rule("x1 = (x2 && x3)")
@@ -86,7 +86,7 @@ else:
 print("\n\n--- SCENARIO B: On-the-Fly Prediction (No Pre-compilation) ---")
 
 # 1. Create a new, un-compiled engine with the same rules
-engine_uncompiled = Engine(variables=variables, name="On-the-Fly Engine")
+engine_uncompiled = Engine(variables=variables, name="On-the-Fly Engine", verbose=1)
 engine_uncompiled.add_rule("x1 = (x2 && x3)")
 engine_uncompiled.add_rule("x2 <= (!x3 || !x4)")
 engine_uncompiled.add_evidence({"x4": False})

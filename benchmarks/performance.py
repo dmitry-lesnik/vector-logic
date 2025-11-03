@@ -17,7 +17,7 @@ def generate_random_rule(variables_: list[str], num_vars: int, operators_: list[
     # Build a simple chained rule, e.g., v1 op v2 op v3 ...
     rule_parts = [maybe_negate(rule_vars[0])]
     for i in range(1, num_vars):
-        op = random_state.choice(operators_)
+        op = str(random_state.choice(operators_))
         var_part = maybe_negate(rule_vars[i])
         # Add parentheses randomly to create more complex ASTs
         rule_parts.extend([op, var_part])
@@ -29,7 +29,7 @@ def generate_random_rule(variables_: list[str], num_vars: int, operators_: list[
     return " ".join(rule_parts)
 
 
-def generate_engine(num_rules, num_vars, random_state, verbose=False):
+def generate_engine(num_rules, num_vars, random_state, verbose=0):
     variables = [f"v{i + 1:02d}" for i in range(num_vars)]
     operators = ["&&", "||", "=>", "<=", "=", "^^"]
     engine = Engine(variables=variables, name="Performance Test Engine")
@@ -51,7 +51,7 @@ def measure_compile_time(engine):
     return compile_duration, engine
 
 
-def predict_one(compile_=True, verbose=False):
+def predict_one(compile_=True, verbose=0):
     print()
     print(f"Running predict_one() with compile = {compile_}")
     seed = 425
@@ -69,7 +69,7 @@ def predict_one(compile_=True, verbose=False):
     evidence = {}
     selected_vars = rng.choice(variables, num_evidence, replace=False)
     for var in selected_vars:
-        evidence[var] = rng.choice([True, False])
+        evidence[str(var)] = bool(rng.choice([True, False]))
 
     start_time = time.perf_counter()
 
@@ -162,7 +162,7 @@ def run__compile_stats():
     print(previous_result)
 
 
-def run__compile_one(seed=42, num_rules=60, num_vars=80, verbose=False):
+def run__compile_one(seed=42, num_rules=60, num_vars=80, verbose=0):
     print()
     print("---  Running compile_one() ---")
     # seed = 42
@@ -211,7 +211,7 @@ def run__compile_one(seed=42, num_rules=60, num_vars=80, verbose=False):
     print(previous_result)
 
 
-def run__to_compile_or_not_to_compile(verbose=False):
+def run__to_compile_or_not_to_compile(verbose=0):
     predict_one(compile_=True, verbose=verbose)
     predict_one(compile_=False, verbose=verbose)
     previous_result = """
@@ -240,8 +240,8 @@ def run__to_compile_or_not_to_compile(verbose=False):
 
 
 if __name__ == "__main__":
-    # run__compile_one(seed=42, verbose=True)
-    # run__compile_one(seed=425, verbose=False)
-    run__compile_one(seed=666, num_rules=80, num_vars=90, verbose=True)
+    # run__compile_one(seed=42, verbose=2)
+    # run__compile_one(seed=425, verbose=2)
+    # run__compile_one(seed=666, num_rules=80, num_vars=90, verbose=2)
     # run__compile_stats()
-    # run__to_compile_or_not_to_compile(verbose=False)
+    run__to_compile_or_not_to_compile(verbose=2)

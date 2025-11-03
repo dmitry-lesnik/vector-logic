@@ -220,7 +220,7 @@ def find_predator_prey(
     base : float, optional
         The base for the exponential reduction estimation. Defaults to 0.8.
     threshold : float, optional
-        The minimum row-score to trigger the predator-prey optimization. Defaults to 1.5.
+        The minimum row-score to trigger the predator-prey optimisation. Defaults to 1.5.
     max_predator_size: int
         The maximum size (number of TObjects) a StateVector can have to be considered a predator.
 
