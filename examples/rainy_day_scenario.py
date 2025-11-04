@@ -27,7 +27,7 @@ def rainy_day_scenario():
     print("\n[Step 1] Adding logical rules to the knowledge base...")
     engine.add_rule("sky_is_grey && humidity_is_high => it_will_rain")
     engine.add_rule("it_will_rain => take_umbrella")
-    engine.add_rule("wind_is_strong = !take_umbrella")
+    engine.add_rule("wind_is_strong != take_umbrella")
 
     # 4. Compile all the rules into a single, combined StateVector.
     # This represents the complete, unified knowledge of the system.
@@ -72,7 +72,7 @@ def rainy_day_scenario():
         "humidity_is_high": True,
         "wind_is_strong": True,
     }
-    print("Evidence: The sky is grey, humidity is high, AND the wind is strong.")
+    print(f"Evidence: {evidence_b}")
 
     result_b = engine.predict(evidence_b)
     print("\nResulting StateVector for this scenario:")
@@ -106,7 +106,7 @@ def rainy_day_scenario():
     engine = Engine(variables=variables, name="Sunny Day Advisor", verbose=1)
 
     engine.add_rule("i_see_you => sun_is_shining")
-    engine.add_rule("i_see_you = !i_am_in_the_office")
+    engine.add_rule("i_see_you != i_am_in_the_office")
     engine.add_rule("sun_is_shining => !need_umbrella")
     engine.add_rule("i_am_in_the_office => !need_umbrella")
 
@@ -114,7 +114,7 @@ def rainy_day_scenario():
 
     if engine.compiled:
         need_umbrella_value = engine.get_variable_value("need_umbrella")
-        print(f"If we don't know anything, the value of 'need_umbrella' is: {need_umbrella_value}")
+        print(f"Without any additional evidence, the value of 'need_umbrella' is: {bool(need_umbrella_value)}")
         if need_umbrella_value == 0:
             print("✅ (expected result)")
         else:

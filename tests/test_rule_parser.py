@@ -30,11 +30,12 @@ def test_parse_negated_variable(variable_map):
 def test_parse_simple_binary_operations(variable_map):
     """Tests parsing of all simple binary operations."""
     parser = RuleParser(variable_map)
-    operations = ["&&", "||", "^^", "=>", "<=", "="]
+    operations = ["&&", "||", "^^", "=>", "<=", "=", "!="]
     for op in operations:
         rule = f"x1 {op} x2"
         ast = parser.parse(rule)
-        expected_ast = ("op", op, ("var", False, "x1"), ("var", False, "x2"))
+        expected_op = "^^" if op == "!=" else op
+        expected_ast = ("op", expected_op, ("var", False, "x1"), ("var", False, "x2"))
         assert ast == expected_ast
 
 
@@ -44,6 +45,15 @@ def test_parse_equivalence_operator(variable_map):
     rule = "x1 <=> x2"
     ast = parser.parse(rule)
     expected_ast = ("op", "=", ("var", False, "x1"), ("var", False, "x2"))
+    assert ast == expected_ast
+
+
+def test_parse_xor_operator(variable_map):
+    """Tests parsing of the XOR operator '!='."""
+    parser = RuleParser(variable_map)
+    rule = "x1 != x2"
+    ast = parser.parse(rule)
+    expected_ast = ("op", "^^", ("var", False, "x1"), ("var", False, "x2"))
     assert ast == expected_ast
 
 
