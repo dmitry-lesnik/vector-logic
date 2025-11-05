@@ -11,17 +11,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Future features will be listed here.
 
+## [0.4.1] - 2025-11-05
+
+### Added
+
+- Rule Syntax: Added `!=` as an intuitive alias for the `^^` (XOR) logical operator in the rule parser.
+
+### Changed
+
+- Minor documentation updates to `README.md`.
+
 ## [0.4.0] - 2025-11-03
 
 ### Added
 
-- **Engine Verbosity**: Added an optional `verbose` parameter to the `Engine` constructor. When enabled, it provides real-time progress updates during the `compile()` process, showing the number of remaining state vectors and the maximum size of any vector. This is useful for debugging performance on large or complex rule sets.
-- **StateVector Iterator**: Implemented `__iter__` and `__getitem__` in the `StateVector` class, allowing it to be used as a standard Python iterable. This enables direct iteration over its internal `TObject` instances (e.g., `for t_obj in state_vector:`).
-- **InferenceResult Iterator**: Added an `iter_dicts()` method to the `InferenceResult` class, providing a convenient way to iterate over the resulting states as dictionaries.
+- **Engine Verbosity**: Added an optional `verbose` parameter to the `Engine` constructor. When enabled, it provides
+  real-time progress updates during the `compile()` process, showing the number of remaining state vectors and the
+  maximum size of any vector. This is useful for debugging performance on large or complex rule sets.
+- **StateVector Iterator**: Implemented `__iter__` and `__getitem__` in the `StateVector` class, allowing it to be used
+  as a standard Python iterable. This enables direct iteration over its internal `TObject` instances (e.g.,
+  `for t_obj in state_vector:`).
+- **InferenceResult Iterator**: Added an `iter_dicts()` method to the `InferenceResult` class, providing a convenient
+  way to iterate over the resulting states as dictionaries.
 
 ### Changed
 
-- **Iterator Caching**: The `Engine.valid_set_iter_dicts()` method now caches the inverted `index_to_name` mapping, improving performance for repeated iterations over the valid set.
+- **Iterator Caching**: The `Engine.valid_set_iter_dicts()` method now caches the inverted `index_to_name` mapping,
+  improving performance for repeated iterations over the valid set.
 
 ## [0.3.0] - 2025-11-01
 
