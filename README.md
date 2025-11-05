@@ -57,7 +57,7 @@ result = engine.predict(evidence)
 # 5. Check the result
 if result:
     take_umbrella = result.get_value("take_umbrella")
-    print(f"Should I take an umbrella? Prediction: {bool(take_umbrella)}")
+    print(f"Should I take an umbrella? Prediction: {take_umbrella}")
 
 # Should I take an umbrella? Prediction: True
 ```
