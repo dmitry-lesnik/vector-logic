@@ -117,6 +117,8 @@ class AstTransformer:
             op, right = tokens[i], tokens[i + 1]
             if op == "<=>":
                 op = "="  # Standardize equivalence operator
+            if op == "!=":
+                op = "^^"  # Standardize XOR operator
             node = ("op", op, node, right)
         return node
 
@@ -169,7 +171,7 @@ class RuleParser:
                 ("!", 1, opAssoc.RIGHT, self._transformer.transform_unary_op),
                 ("&&", 2, opAssoc.LEFT, self._transformer.transform_binary_op),
                 ("||", 2, opAssoc.LEFT, self._transformer.transform_binary_op),
-                ("^^", 2, opAssoc.LEFT, self._transformer.transform_binary_op),
+                (pp.oneOf("^^ !="), 2, opAssoc.LEFT, self._transformer.transform_binary_op),
                 (pp.oneOf("=> <= = <=>"), 2, opAssoc.LEFT, self._transformer.transform_binary_op),
             ],
         )
@@ -193,7 +195,7 @@ class RuleParser:
             - Operation: `('op', '&&', left_child, right_child)`
 
         Raises
-        ------
+        -------
         ValueError
             If the rule string is empty, contains invalid syntax, or uses
             undefined variables.
