@@ -114,7 +114,7 @@ def rainy_day_scenario():
 
     if engine.compiled:
         need_umbrella_value = engine.get_variable_value("need_umbrella")
-        print(f"Without any additional evidence, the value of 'need_umbrella' is: {bool(need_umbrella_value)}")
+        print(f"Without any additional evidence, the value of 'need_umbrella' is: {need_umbrella_value}")
         if need_umbrella_value == 0:
             print("✅ (expected result)")
         else:
